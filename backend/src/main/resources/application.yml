@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: tutor-backend
+  config:
+    # Lee el .env de la raíz del monorepo (desarrollo local). En contenedores se usan variables de entorno reales.
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:tutor}
+    username: ${DB_USER:tutor}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate # el esquema lo gestiona Flyway
+  flyway:
+    # db/migration = esquema; db/seed = datos de demostración (curso, lecciones, alumnos de prueba)
+    locations: classpath:db/migration,classpath:db/seed
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
