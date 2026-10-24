@@ -12,6 +12,10 @@ async function expectNoSeriousViolations(page: Page): Promise<void> {
 }
 
 test.describe('Accesibilidad (axe-core)', () => {
+  // Sin animaciones (la app respeta prefers-reduced-motion): axe mide el contraste con el estado final, no a mitad
+  // de un fundido de entrada (en runners lentos daba falsos positivos).
+  test.use({ contextOptions: { reducedMotion: 'reduce' } });
+
   test('login', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByRole('heading', { name: 'Inicia sesión' })).toBeVisible();
