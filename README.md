@@ -4,14 +4,14 @@ Prueba de concepto: un alumno autorizado abre una lección y pregunta al tutor I
 basándose en el contenido de la lección (o indica que no tiene información suficiente) y la respuesta puede escucharse.
 El historial se conserva por alumno y lección.
 
-> Estado: **en construcción** — estructura del repositorio, base de datos y modelo de datos listos.
+> Estado: **en construcción** — backend completo; frontend con login y "Mis cursos" (lección y tutor en curso).
 
 ## Estructura
 
 ```
 .
 ├── backend/            Spring Boot 4 · Java 25 · PostgreSQL · Flyway
-├── frontend/           Angular + Tailwind (pendiente)
+├── frontend/           Angular 22 · Tailwind 4 · Vitest
 ├── docs/DESIGN.md      Guía de diseño y plataformas de referencia
 ├── docker-compose.yml  PostgreSQL para desarrollo
 └── .env.example        Variables de entorno (copiar a .env)
@@ -21,7 +21,7 @@ El historial se conserva por alumno y lección.
 
 - JDK 25 (p. ej. Eclipse Temurin 25 o `java-25-openjdk-devel` en Fedora)
 - Docker + Docker Compose (también lo usan los tests vía Testcontainers)
-- Node 22+ (frontend, pendiente)
+- Node 24 LTS (`frontend/.nvmrc`; Angular 22 no admite Node 25)
 
 ## Puesta en marcha (backend)
 
@@ -34,6 +34,17 @@ cd backend && ./mvnw spring-boot:run
 
 Flyway crea el esquema y carga los datos de demostración al arrancar. Sin `JWT_SECRET` (≥ 32 bytes) la aplicación
 no arranca, a propósito.
+
+## Puesta en marcha (frontend)
+
+```bash
+cd frontend
+nvm use            # Node 24
+npm ci
+npm start          # http://localhost:4200 (proxy de /api → localhost:8080)
+```
+
+En la pantalla de login hay accesos directos a las dos cuentas de demostración.
 
 ## API
 
@@ -80,6 +91,7 @@ ante fallos transitorios (timeout, 429, 5xx, salida no válida) y **circuit brea
 
 ```bash
 cd backend && ./mvnw test       # levanta un PostgreSQL efímero con Testcontainers
+cd frontend && npm run test:ci  # Vitest (unitarios de componentes, servicios, interceptors y guards)
 ```
 
 | Tipo | Qué cubre |
