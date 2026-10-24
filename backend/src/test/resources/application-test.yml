@@ -4,3 +4,11 @@ app:
       # Secreto exclusivo de tests (no se usa fuera de este perfil)
       secret: test-only-secret-0123456789-abcdefghijklmnopqrstuvwxyz
       ttl: 15m
+  rate-limit:
+    # Los tests hacen muchas peticiones seguidas; RateLimitTests prueba los límites con valores bajos.
+    login:
+      requests: 10000
+    questions:
+      requests: 10000
+    transcriptions:
+      requests: 10000

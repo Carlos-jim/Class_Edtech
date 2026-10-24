@@ -1,7 +1,10 @@
 package com.edtech.tutor.auth;
 
+import com.edtech.tutor.shared.web.RateLimitFilter;
+import com.edtech.tutor.shared.web.RateLimitProperties;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -24,7 +27,10 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
@@ -39,10 +45,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *   <li>CORS restringido a los orígenes configurados.</li>
  *   <li>Todo requiere autenticación salvo login y health. La autorización por recurso (matrícula,
  *       propiedad de la conversación) se aplica en la capa de aplicación.</li>
+ *   <li>Límite de peticiones tras la autenticación (por IP en el login, por alumno en IA y voz).</li>
  * </ul>
  */
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class, RateLimitProperties.class})
+@EnableScheduling
 class SecurityConfig {
 
     static final String LOGIN_PATH = "/api/auth/login";
@@ -51,8 +59,18 @@ class SecurityConfig {
             {"type":"about:blank","title":"Unauthorized","status":401,\
             "detail":"Autenticación requerida o token no válido","code":"UNAUTHENTICATED"}""";
 
+    private final RateLimitFilter rateLimitFilter;
+
+    SecurityConfig(RateLimitProperties rateLimits) {
+        // No es un @Bean a propósito: así Spring Boot no lo registra también como filtro global del servlet.
+        this.rateLimitFilter = new RateLimitFilter(rateLimits, Clock.systemUTC());
+    }
+
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimits) throws Exception {
+        if (rateLimits.enabled()) {
+            http.addFilterAfter(rateLimitFilter, BearerTokenAuthenticationFilter.class);
+        }
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {
@@ -86,6 +104,11 @@ class SecurityConfig {
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.getWriter().write(UNAUTHENTICATED_BODY);
         };
+    }
+
+    @Scheduled(fixedDelayString = "PT5M")
+    void evictIdleRateLimitKeys() {
+        rateLimitFilter.evictIdle();
     }
 
     @Bean

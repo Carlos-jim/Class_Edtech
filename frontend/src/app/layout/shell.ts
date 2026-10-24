@@ -36,7 +36,7 @@ import { Icon } from '../shared/ui/icon';
             >
             <span class="hidden text-sm font-medium text-slate-700 sm:inline" data-testid="current-user">{{ student()?.displayName }}</span>
           </div>
-          <button type="button" class="btn-ghost px-2.5 py-1.5" (click)="logout()" aria-label="Cerrar sesión">
+          <button type="button" class="btn-ghost px-2.5 py-1.5" (click)="logout()" aria-label="Salir" title="Cerrar sesión">
             <app-icon name="log-out" [size]="18" />
             <span class="hidden md:inline">Salir</span>
           </button>

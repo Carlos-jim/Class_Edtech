@@ -1,5 +1,8 @@
 name: lms-tutor
 
+# Stack completo:   docker compose up --build        → http://localhost:${APP_PORT:-8080}
+# Solo la BD (dev): docker compose up -d postgres
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -14,6 +17,48 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432 # puerto interno de la red de compose (no el publicado en el host)
+      DB_NAME: ${DB_NAME:-tutor}
+      DB_USER: ${DB_USER:-tutor}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (openssl rand -base64 48)}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-mock}}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      RATE_LIMIT_LOGIN_PER_MINUTE: ${RATE_LIMIT_LOGIN_PER_MINUTE:-20}
+      RATE_LIMIT_QUESTIONS_PER_MINUTE: ${RATE_LIMIT_QUESTIONS_PER_MINUTE:-15}
+      RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE: ${RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE:-15}
+    # Sin puertos publicados: solo es accesible a través de nginx (frontend).
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10

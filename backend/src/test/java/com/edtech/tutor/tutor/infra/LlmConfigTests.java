@@ -16,6 +16,7 @@ class LlmConfigTests {
     void mockIsTheDefaultProvider() {
         assertThat(LlmConfig.create(null, groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
         assertThat(LlmConfig.create(" MOCK ", groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
+        assertThat(LlmConfig.create("", groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
     }
 
     @Test

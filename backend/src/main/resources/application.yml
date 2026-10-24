@@ -35,6 +35,17 @@ app:
       issuer: lms-tutor
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    login:          # por IP: frena la fuerza bruta
+      requests: ${RATE_LIMIT_LOGIN_PER_MINUTE:20}
+      window: 1m
+    questions:      # por alumno: protege la cuota del proveedor de IA
+      requests: ${RATE_LIMIT_QUESTIONS_PER_MINUTE:15}
+      window: 1m
+    transcriptions: # por alumno
+      requests: ${RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE:15}
+      window: 1m
 
 tutor:
   llm:
@@ -57,6 +68,8 @@ groq:
   read-timeout: 15s
 
 server:
+  # Detrás de nginx: la IP real del cliente llega en X-Forwarded-For (solo se confía en proxies de red privada).
+  forward-headers-strategy: native
   tomcat:
     # Tomcat lee hasta 10 MB de una subida rechazada para poder responder 413 con el error explicado;
     # por encima corta la conexión (protección frente a abusos).

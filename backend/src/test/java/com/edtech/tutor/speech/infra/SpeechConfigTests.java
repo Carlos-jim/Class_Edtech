@@ -12,6 +12,7 @@ class SpeechConfigTests {
     @Test
     void mockIsTheDefaultProvider() {
         assertThat(SpeechConfig.create(null, groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
+        assertThat(SpeechConfig.create("  ", groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
     }
 
     @Test

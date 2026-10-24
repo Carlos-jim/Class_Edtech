@@ -13,7 +13,7 @@ import { Icon } from '../../shared/ui/icon';
       <a routerLink="/courses" class="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800">
         <app-icon name="chevron-left" [size]="14" /> Mis cursos
       </a>
-      <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Curso</p>
+      <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Curso</p>
       <h2 class="mt-1 text-sm font-semibold leading-snug text-slate-900">{{ course().title }}</h2>
 
       <ol class="mt-5 space-y-1">
@@ -38,7 +38,7 @@ import { Icon } from '../../shared/ui/icon';
               >
               <span class="min-w-0">
                 <span class="block font-medium leading-snug">{{ lesson.title }}</span>
-                <span class="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                <span class="mt-0.5 flex items-center gap-1 text-xs" [class]="active ? 'text-brand-700' : 'text-slate-500'">
                   <app-icon name="clock" [size]="12" /> {{ lesson.estimatedMinutes }} min
                 </span>
               </span>

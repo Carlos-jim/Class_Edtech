@@ -37,12 +37,12 @@ import { Icon } from '../../shared/ui/icon';
 
         <div class="mt-5 border-t border-slate-100 pt-4">
           @if (course().firstLessonId; as lessonId) {
-            <a [routerLink]="['/lessons', lessonId]" class="btn-primary w-full" [attr.aria-label]="'Empezar ' + course().title">
+            <a [routerLink]="['/lessons', lessonId]" class="btn-primary w-full" [attr.aria-label]="'Empezar curso: ' + course().title">
               Empezar curso
               <app-icon name="arrow-right" [size]="16" class="transition-transform group-hover:translate-x-0.5" />
             </a>
           } @else {
-            <p class="text-sm text-slate-400">Este curso aún no tiene lecciones.</p>
+            <p class="text-sm text-slate-500">Este curso aún no tiene lecciones.</p>
           }
         </div>
       </div>

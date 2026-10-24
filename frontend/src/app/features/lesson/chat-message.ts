@@ -20,7 +20,7 @@ import { Icon } from '../../shared/ui/icon';
             [class.opacity-70]="pending()"
             data-testid="student-message"
           >{{ message().content }}</div>
-          <p class="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-400">
+          <p class="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-500">
             @if (message().inputMode === 'VOICE') {
               <app-icon name="mic" [size]="12" /> Por voz ·
             }
@@ -48,7 +48,7 @@ import { Icon } from '../../shared/ui/icon';
                 <app-icon name="circle-help" [size]="12" /> Sin información suficiente en la lección
               </span>
             }
-            <span class="text-[11px] text-slate-400">{{ time() }}</span>
+            <span class="text-[11px] text-slate-500">{{ time() }}</span>
             <ng-content />
           </div>
         </div>

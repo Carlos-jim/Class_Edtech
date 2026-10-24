@@ -174,7 +174,7 @@ import { TutorStore } from './tutor-store';
             (keydown.enter)="onEnter($any($event))"
           ></textarea>
           <div class="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
-            <span class="px-1 text-[11px]" [class]="nearLimit() ? 'text-amber-600' : 'text-slate-400'">
+            <span class="px-1 text-[11px]" [class]="nearLimit() ? 'text-amber-700' : 'text-slate-500'">
               @if (nearLimit()) {
                 {{ store.draftLength() }}/{{ maxLength }}
               } @else {
