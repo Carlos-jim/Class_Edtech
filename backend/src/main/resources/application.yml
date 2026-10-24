@@ -31,6 +31,11 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
+tutor:
+  llm:
+    # mock (por defecto, sin clave) | groq
+    provider: ${LLM_PROVIDER:mock}
+
 server:
   error:
     include-stacktrace: never

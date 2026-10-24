@@ -43,6 +43,10 @@ public class Message {
     @Column(updatable = false)
     private Boolean grounded;
 
+    /** Generado por la BD (identity). Solo se usa para ordenar el historial. */
+    @Column(insertable = false, updatable = false)
+    private Long seq;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

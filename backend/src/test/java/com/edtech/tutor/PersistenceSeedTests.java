@@ -77,7 +77,7 @@ class PersistenceSeedTests {
         messages.save(Message.fromTutor(conversation.getId(), "POST sirve para crear recursos.", true));
         messages.flush();
 
-        var history = messages.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+        var history = messages.findByConversationIdOrderBySeqAsc(conversation.getId());
 
         assertThat(history).extracting(Message::getRole).containsExactly(MessageRole.STUDENT, MessageRole.TUTOR);
         assertThat(conversations.findByStudentIdAndLessonId(ANA, LESSON_1)).isPresent();

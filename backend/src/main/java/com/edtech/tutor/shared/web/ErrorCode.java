@@ -12,6 +12,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos"),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Autenticación requerida o token no válido"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "Recurso no encontrado"),
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "El tutor no está disponible en este momento. Inténtalo de nuevo en unos segundos"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno. Inténtalo de nuevo más tarde");
 
     private final HttpStatus status;

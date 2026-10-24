@@ -44,6 +44,8 @@ no arranca, a propósito.
 | `GET` | `/api/courses` | Bearer | Cursos en los que está matriculado el alumno |
 | `GET` | `/api/courses/{id}` | Bearer + matrícula | Curso con su temario |
 | `GET` | `/api/lessons/{id}` | Bearer + matrícula | Lección completa (Markdown) con navegación anterior/siguiente |
+| `GET` | `/api/lessons/{id}/messages` | Bearer + matrícula | Historial del alumno en esa lección (solo el suyo) |
+| `POST` | `/api/lessons/{id}/messages` | Bearer + matrícula | `{content, inputMode: TEXT\|VOICE}` → `{question, answer}`; `answer.grounded` indica si se basa en la lección |
 | `GET` | `/actuator/health` | público | Estado del servicio |
 
 Un recurso sin acceso responde **404, igual que uno inexistente**, para no revelar qué ids son válidos (prevención
@@ -57,11 +59,24 @@ curl -s localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"ana.garcia@demo.edtech","password":"Demo1234!"}'
 ```
 
+## Proveedor de IA
+
+| `LLM_PROVIDER` | Comportamiento |
+|---|---|
+| `mock` (por defecto) | Sin clave. Responde con la sección de la lección más relacionada con la pregunta o indica que no hay información suficiente. Incluir `#simular-fallo` en la pregunta simula una caída del servicio de IA (HTTP 503 `AI_UNAVAILABLE`) para demostrar la recuperación de errores. |
+| `groq` | Modelo real vía Groq (requiere `GROQ_API_KEY`). |
+
 ## Tests
 
 ```bash
 cd backend && ./mvnw test       # levanta un PostgreSQL efímero con Testcontainers
 ```
+
+| Tipo | Qué cubre |
+|---|---|
+| Unitarios | `PromptBuilder` (grounding, neutralización de inyección de prompt), adaptador mock |
+| Integración (MockMvc) | Seguridad JWT, CORS, catálogo, tutor, validación, IDOR entre alumnos |
+| **E2E de API** (`e2e/`) | Servidor real en puerto aleatorio: login → curso → lección → preguntas (voz/texto, fuera de temario, fallo de IA) → nuevo login → historial; y cuenta sin acceso |
 
 ## Usuarios de prueba
 
