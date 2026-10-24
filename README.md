@@ -41,7 +41,13 @@ no arranca, a propósito.
 |---|---|---|---|
 | `POST` | `/api/auth/login` | público | `{email, password}` → `{accessToken, tokenType, expiresAt, student}` |
 | `GET` | `/api/auth/me` | Bearer | Perfil del alumno del token |
+| `GET` | `/api/courses` | Bearer | Cursos en los que está matriculado el alumno |
+| `GET` | `/api/courses/{id}` | Bearer + matrícula | Curso con su temario |
+| `GET` | `/api/lessons/{id}` | Bearer + matrícula | Lección completa (Markdown) con navegación anterior/siguiente |
 | `GET` | `/actuator/health` | público | Estado del servicio |
+
+Un recurso sin acceso responde **404, igual que uno inexistente**, para no revelar qué ids son válidos (prevención
+de IDOR y enumeración). La identidad del alumno sale siempre del token, nunca de la URL ni del cuerpo.
 
 Los errores siguen RFC 9457 (`application/problem+json`) con un campo `code` estable
 (`INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `VALIDATION_FAILED`, ...).
