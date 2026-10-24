@@ -11,8 +11,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 /**
  * Proveedor simulado y determinista: permite ejecutar la demo, los tests y la CI sin clave de API.
@@ -22,9 +20,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>Si la pregunta contiene {@value #FAILURE_TRIGGER}, simula una caída del servicio de IA para demostrar la
  * recuperación de errores en la interfaz.
+ *
+ * <p>Se registra como bean en {@link LlmConfig}.
  */
-@Component
-@ConditionalOnProperty(name = "tutor.llm.provider", havingValue = "mock", matchIfMissing = true)
 public class MockLlmAdapter implements LlmPort {
 
     public static final String FAILURE_TRIGGER = "#simular-fallo";

@@ -35,6 +35,14 @@ tutor:
   llm:
     # mock (por defecto, sin clave) | groq
     provider: ${LLM_PROVIDER:mock}
+    groq:
+      api-key: ${GROQ_API_KEY:}
+      base-url: https://api.groq.com/openai/v1
+      model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+      temperature: 0.2 # baja: respuestas fieles a la lección
+      max-tokens: 600
+      connect-timeout: 3s
+      read-timeout: 15s
 
 server:
   error:

@@ -64,7 +64,11 @@ curl -s localhost:8080/api/auth/login -H 'Content-Type: application/json' \
 | `LLM_PROVIDER` | Comportamiento |
 |---|---|
 | `mock` (por defecto) | Sin clave. Responde con la sección de la lección más relacionada con la pregunta o indica que no hay información suficiente. Incluir `#simular-fallo` en la pregunta simula una caída del servicio de IA (HTTP 503 `AI_UNAVAILABLE`) para demostrar la recuperación de errores. |
-| `groq` | Modelo real vía Groq (requiere `GROQ_API_KEY`). |
+| `groq` | Modelo real vía Groq (requiere `GROQ_API_KEY`; modelo configurable con `GROQ_MODEL`, por defecto `llama-3.3-70b-versatile`). La app no arranca si falta la clave. |
+
+Resiliencia con el proveedor real: timeouts (3 s de conexión, 15 s de lectura), **un reintento** con backoff solo
+ante fallos transitorios (timeout, 429, 5xx, salida no válida) y **circuit breaker** (si fallan ≥ 50 % de las
+últimas llamadas, responde `AI_UNAVAILABLE` al instante durante 30 s en vez de hacer esperar al alumno).
 
 ## Tests
 
