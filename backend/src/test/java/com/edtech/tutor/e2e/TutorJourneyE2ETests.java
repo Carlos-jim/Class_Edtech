@@ -4,6 +4,8 @@ import static com.edtech.tutor.SeedData.LESSON_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.edtech.tutor.TestcontainersConfiguration;
+import com.edtech.tutor.speech.TestAudio;
+import com.edtech.tutor.speech.infra.MockTranscriptionAdapter;
 import com.edtech.tutor.tutor.infra.MockLlmAdapter;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
@@ -16,16 +18,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
 /**
- * E2E de API: servidor real en puerto aleatorio + PostgreSQL real + LLM mock. Recorre por HTTP el flujo del
- * enunciado tal como lo hará el frontend: login → curso → lección → preguntas → volver más tarde → historial,
+ * E2E de API: servidor real en puerto aleatorio + PostgreSQL real + LLM y voz mock. Recorre por HTTP el flujo del
+ * enunciado tal como lo hará el frontend: login → curso → lección → voz → transcripción → preguntas → volver más
+ * tarde → historial,
  * y comprueba que una cuenta sin acceso no ve ni la lección ni los mensajes.
  */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -127,6 +133,39 @@ class TutorJourneyE2ETests {
         assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE)).startsWith("Bearer");
     }
 
+    @Test
+    void voiceQuestionIsTranscribedReviewedAndSentToTheTutor() {
+        var token = login("ana.garcia@demo.edtech");
+
+        // 1. El navegador sube la grabación (MediaRecorder → webm/opus)
+        var transcription = transcribe(token, TestAudio.webm(16 * 1024));
+        assertThat(transcription.getStatusCode().value()).isEqualTo(200);
+        String text = JsonPath.read(transcription.getBody(), "$.text");
+        assertThat(text).isEqualTo(MockTranscriptionAdapter.SAMPLE_TRANSCRIPT);
+
+        // 2. El alumno revisa (puede editar) y envía el texto como pregunta por voz
+        var answer = ask(LESSON_2.toString(), token, text, "VOICE");
+        assertThat(answer.getStatusCode().value()).isEqualTo(201);
+        assertThat((String) JsonPath.read(answer.getBody(), "$.question.inputMode")).isEqualTo("VOICE");
+        assertThat((Boolean) JsonPath.read(answer.getBody(), "$.answer.grounded")).isTrue();
+    }
+
+    @Test
+    void voiceErrorsAreRecoverableAndExplained() {
+        var token = login("ana.garcia@demo.edtech");
+
+        var tooLarge = transcribe(token, TestAudio.webm(7 * 1024 * 1024));
+        assertThat(tooLarge.getStatusCode().value()).isEqualTo(413);
+        assertThat((String) JsonPath.read(tooLarge.getBody(), "$.code")).isEqualTo("AUDIO_TOO_LARGE");
+
+        var notAudio = transcribe(token, TestAudio.png(16 * 1024));
+        assertThat(notAudio.getStatusCode().value()).isEqualTo(415);
+
+        var outage = transcribe(token, TestAudio.webmThatFails(16 * 1024));
+        assertThat(outage.getStatusCode().value()).isEqualTo(503);
+        assertThat((String) JsonPath.read(outage.getBody(), "$.code")).isEqualTo("TRANSCRIPTION_UNAVAILABLE");
+    }
+
     // --- helpers -----------------------------------------------------------------------------
 
     private String login(String email) {
@@ -151,6 +190,24 @@ class TutorJourneyE2ETests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
                         {"content":"%s","inputMode":"%s"}""".formatted(question, inputMode))
+                .retrieve().toEntity(String.class);
+    }
+
+    private ResponseEntity<String> transcribe(String token, byte[] audio) {
+        var fileHeaders = new HttpHeaders();
+        fileHeaders.setContentType(MediaType.parseMediaType("audio/webm"));
+        fileHeaders.setContentDispositionFormData("audio", "grabacion.webm");
+        var form = new LinkedMultiValueMap<String, Object>();
+        form.add("audio", new HttpEntity<>(new ByteArrayResource(audio) {
+            @Override
+            public String getFilename() {
+                return "grabacion.webm";
+            }
+        }, fileHeaders));
+        return http.post().uri("/api/transcriptions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(form)
                 .retrieve().toEntity(String.class);
     }
 }

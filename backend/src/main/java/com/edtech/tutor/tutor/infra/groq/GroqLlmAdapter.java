@@ -5,15 +5,13 @@ import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.MessageRole;
 import com.edtech.tutor.tutor.domain.TutorAnswer;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
+import com.edtech.tutor.shared.groq.GroqProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -68,21 +66,9 @@ public class GroqLlmAdapter implements LlmPort {
         this.json = json;
     }
 
-    /** Cliente HTTP con timeouts explícitos y la clave en la cabecera. */
-    public static RestClient restClient(GroqProperties properties) {
-        var httpClient = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();
-        var requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(properties.readTimeout());
-        return RestClient.builder()
-                .baseUrl(properties.baseUrl())
-                .requestFactory(requestFactory)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
-                .build();
-    }
-
     @Override
     public TutorAnswer answer(TutorPrompt prompt) {
-        var request = new ChatRequest(properties.model(), toMessages(prompt), properties.temperature(),
+        var request = new ChatRequest(properties.chatModel(), toMessages(prompt), properties.temperature(),
                 properties.maxTokens(), new ResponseFormat("json_object"));
 
         ChatResponse response;

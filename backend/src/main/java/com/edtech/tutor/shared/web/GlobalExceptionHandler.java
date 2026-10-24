@@ -69,7 +69,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         var response = super.handleExceptionInternal(ex, body, headers, status, request);
         if (response != null && response.getBody() instanceof ProblemDetail problem
                 && (problem.getProperties() == null || !problem.getProperties().containsKey("code"))) {
-            problem.setProperty("code", status.value() == 404 ? ErrorCode.NOT_FOUND.name() : ErrorCode.BAD_REQUEST.name());
+            var code = switch (status.value()) {
+                case 404 -> ErrorCode.NOT_FOUND;
+                case 413 -> ErrorCode.AUDIO_TOO_LARGE; // el único upload de la API es el audio
+                default -> ErrorCode.BAD_REQUEST;
+            };
+            problem.setProperty("code", code.name());
         }
         return response;
     }

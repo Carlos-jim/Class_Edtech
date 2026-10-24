@@ -13,6 +13,10 @@ public enum ErrorCode {
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Autenticación requerida o token no válido"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "Recurso no encontrado"),
     AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "El tutor no está disponible en este momento. Inténtalo de nuevo en unos segundos"),
+    AUDIO_INVALID(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "El archivo no es un audio en un formato admitido (webm, ogg, m4a, wav, mp3)"),
+    AUDIO_TOO_LARGE(HttpStatus.valueOf(413), "La grabación es demasiado larga. Graba una pregunta más breve"),
+    NO_SPEECH_DETECTED(HttpStatus.valueOf(422), "No se ha detectado voz en la grabación. Inténtalo de nuevo o escribe tu pregunta"),
+    TRANSCRIPTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "No se pudo transcribir el audio. Inténtalo de nuevo o escribe tu pregunta"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno. Inténtalo de nuevo más tarde");
 
     private final HttpStatus status;

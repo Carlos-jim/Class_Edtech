@@ -1,13 +1,13 @@
 package com.edtech.tutor.tutor.infra;
 
+import com.edtech.tutor.shared.groq.GroqClient;
+import com.edtech.tutor.shared.groq.GroqProperties;
 import com.edtech.tutor.tutor.domain.LlmPort;
 import com.edtech.tutor.tutor.infra.groq.GroqLlmAdapter;
-import com.edtech.tutor.tutor.infra.groq.GroqProperties;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.ObjectMapper;
@@ -17,7 +17,6 @@ import tools.jackson.databind.ObjectMapper;
  * Los proveedores reales se envuelven en {@link ResilientLlmPort}; el mock no, porque es local y determinista.
  */
 @Configuration
-@EnableConfigurationProperties(GroqProperties.class)
 class LlmConfig {
 
     private static final Logger log = LoggerFactory.getLogger(LlmConfig.class);
@@ -36,12 +35,10 @@ class LlmConfig {
             }
             case "groq" -> {
                 if (!groq.hasApiKey()) {
-                    throw new IllegalStateException(
-                            "LLM_PROVIDER=groq requiere GROQ_API_KEY (gratuita en https://console.groq.com/keys). "
-                                    + "Usa LLM_PROVIDER=mock para ejecutar sin clave.");
+                    throw new IllegalStateException("LLM_PROVIDER=groq " + GroqClient.MISSING_KEY_MESSAGE);
                 }
-                log.info("Tutor IA: proveedor GROQ, modelo {}", groq.model());
-                yield ResilientLlmPort.withDefaults(new GroqLlmAdapter(GroqLlmAdapter.restClient(groq), groq, json), "groq");
+                log.info("Tutor IA: proveedor GROQ, modelo {}", groq.chatModel());
+                yield ResilientLlmPort.withDefaults(new GroqLlmAdapter(GroqClient.restClient(groq), groq, json), "groq");
             }
             default -> throw new IllegalStateException(
                     "tutor.llm.provider no soportado: '" + provider + "'. Valores válidos: mock, groq");

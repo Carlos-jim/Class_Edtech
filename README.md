@@ -46,6 +46,7 @@ no arranca, a propósito.
 | `GET` | `/api/lessons/{id}` | Bearer + matrícula | Lección completa (Markdown) con navegación anterior/siguiente |
 | `GET` | `/api/lessons/{id}/messages` | Bearer + matrícula | Historial del alumno en esa lección (solo el suyo) |
 | `POST` | `/api/lessons/{id}/messages` | Bearer + matrícula | `{content, inputMode: TEXT\|VOICE}` → `{question, answer}`; `answer.grounded` indica si se basa en la lección |
+| `POST` | `/api/transcriptions` | Bearer | Multipart `audio` (webm/ogg/m4a/wav/mp3, máx. 5 MB) → `{text}` para revisar antes de enviar |
 | `GET` | `/actuator/health` | público | Estado del servicio |
 
 Un recurso sin acceso responde **404, igual que uno inexistente**, para no revelar qué ids son válidos (prevención
@@ -59,12 +60,17 @@ curl -s localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"ana.garcia@demo.edtech","password":"Demo1234!"}'
 ```
 
-## Proveedor de IA
+## Proveedores de IA (tutor y voz)
 
 | `LLM_PROVIDER` | Comportamiento |
 |---|---|
 | `mock` (por defecto) | Sin clave. Responde con la sección de la lección más relacionada con la pregunta o indica que no hay información suficiente. Incluir `#simular-fallo` en la pregunta simula una caída del servicio de IA (HTTP 503 `AI_UNAVAILABLE`) para demostrar la recuperación de errores. |
 | `groq` | Modelo real vía Groq (requiere `GROQ_API_KEY`; modelo configurable con `GROQ_MODEL`, por defecto `llama-3.3-70b-versatile`). La app no arranca si falta la clave. |
+
+La transcripción (`STT_PROVIDER`, por defecto igual que `LLM_PROVIDER`) usa Groq Whisper
+(`whisper-large-v3-turbo`) o un mock que siempre devuelve «¿Para qué sirve POST?». El formato del audio se valida por
+su firma binaria (no por el `Content-Type` del cliente) y se descartan las alucinaciones típicas de Whisper con
+silencio («Subtítulos realizados por la comunidad de Amara.org»...).
 
 Resiliencia con el proveedor real: timeouts (3 s de conexión, 15 s de lectura), **un reintento** con backoff solo
 ante fallos transitorios (timeout, 429, 5xx, salida no válida) y **circuit breaker** (si fallan ≥ 50 % de las

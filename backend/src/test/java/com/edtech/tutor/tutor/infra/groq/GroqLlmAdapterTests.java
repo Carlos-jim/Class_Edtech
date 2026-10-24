@@ -11,6 +11,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withTooManyRequests;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
+import com.edtech.tutor.shared.groq.GroqProperties;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.MessageRole;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
@@ -31,7 +32,7 @@ class GroqLlmAdapterTests {
 
     static final String URL = "https://groq.test/openai/v1/chat/completions";
     static final GroqProperties PROPS = new GroqProperties("test-key", "https://groq.test/openai/v1",
-            "llama-test", 0.2, 600, Duration.ofSeconds(1), Duration.ofSeconds(2));
+            "llama-test", "whisper-test", 0.2, 600, Duration.ofSeconds(1), Duration.ofSeconds(2));
 
     MockRestServiceServer server;
     GroqLlmAdapter adapter;

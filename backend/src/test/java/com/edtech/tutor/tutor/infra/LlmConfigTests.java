@@ -3,7 +3,7 @@ package com.edtech.tutor.tutor.infra;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.edtech.tutor.tutor.infra.groq.GroqProperties;
+import com.edtech.tutor.shared.groq.GroqProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -28,7 +28,7 @@ class LlmConfigTests {
         assertThatThrownBy(() -> LlmConfig.create("groq", groq(" "), JSON))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("GROQ_API_KEY")
-                .hasMessageContaining("LLM_PROVIDER=mock");
+                .hasMessageContaining("LLM_PROVIDER=groq").hasMessageContaining("'mock'");
     }
 
     @Test
@@ -44,7 +44,7 @@ class LlmConfigTests {
     }
 
     private static GroqProperties groq(String apiKey) {
-        return new GroqProperties(apiKey, "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile",
+        return new GroqProperties(apiKey, "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "whisper-large-v3-turbo",
                 0.2, 600, Duration.ofSeconds(3), Duration.ofSeconds(15));
     }
 }

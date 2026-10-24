@@ -3,6 +3,8 @@ package com.edtech.tutor.tutor.infra.groq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.edtech.tutor.shared.groq.GroqClient;
+import com.edtech.tutor.shared.groq.GroqProperties;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
 import com.edtech.tutor.tutor.domain.TutorPrompt.LessonContext;
@@ -72,8 +74,8 @@ class GroqHttpClientTests {
     private GroqLlmAdapter adapter(Duration readTimeout) {
         var props = new GroqProperties("secret-key",
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/openai/v1",
-                "llama-test", 0.2, 600, Duration.ofSeconds(1), readTimeout);
-        return new GroqLlmAdapter(GroqLlmAdapter.restClient(props), props, JsonMapper.builder().build());
+                "llama-test", "whisper-test", 0.2, 600, Duration.ofSeconds(1), readTimeout);
+        return new GroqLlmAdapter(GroqClient.restClient(props), props, JsonMapper.builder().build());
     }
 
     private static TutorPrompt prompt() {
