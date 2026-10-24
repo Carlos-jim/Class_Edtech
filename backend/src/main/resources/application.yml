@@ -18,6 +18,19 @@ spring:
     # db/migration = esquema; db/seed = datos de demostración (curso, lecciones, alumnos de prueba)
     locations: classpath:db/migration,classpath:db/seed
 
+  mvc:
+    problemdetails:
+      enabled: true
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:} # obligatorio: la app no arranca sin él
+      ttl: ${JWT_TTL:2h}
+      issuer: lms-tutor
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
 server:
   error:
     include-stacktrace: never

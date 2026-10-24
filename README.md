@@ -26,12 +26,30 @@ El historial se conserva por alumno y lección.
 ## Puesta en marcha (backend)
 
 ```bash
-cp .env.example .env            # ajusta DB_PASSWORD
+cp .env.example .env
+# Edita .env: define DB_PASSWORD y JWT_SECRET (obligatorio, genera uno con: openssl rand -base64 48)
 docker compose up -d postgres
 cd backend && ./mvnw spring-boot:run
 ```
 
-Flyway crea el esquema y carga los datos de demostración al arrancar.
+Flyway crea el esquema y carga los datos de demostración al arrancar. Sin `JWT_SECRET` (≥ 32 bytes) la aplicación
+no arranca, a propósito.
+
+## API
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | público | `{email, password}` → `{accessToken, tokenType, expiresAt, student}` |
+| `GET` | `/api/auth/me` | Bearer | Perfil del alumno del token |
+| `GET` | `/actuator/health` | público | Estado del servicio |
+
+Los errores siguen RFC 9457 (`application/problem+json`) con un campo `code` estable
+(`INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `VALIDATION_FAILED`, ...).
+
+```bash
+curl -s localhost:8080/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"ana.garcia@demo.edtech","password":"Demo1234!"}'
+```
 
 ## Tests
 

@@ -1,0 +1,6 @@
+app:
+  security:
+    jwt:
+      # Secreto exclusivo de tests (no se usa fuera de este perfil)
+      secret: test-only-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+      ttl: 15m
