@@ -4,7 +4,7 @@ Prueba de concepto: un alumno autorizado abre una lección y pregunta al tutor I
 basándose en el contenido de la lección (o indica que no tiene información suficiente) y la respuesta puede escucharse.
 El historial se conserva por alumno y lección.
 
-> Estado: **en construcción** — backend completo; frontend con login, cursos, lección y tutor por texto (voz en curso).
+> Estado: **en construcción** — backend completo; frontend completo (login, cursos, lección, tutor por texto y voz).
 
 ## Estructura
 

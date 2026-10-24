@@ -111,7 +111,7 @@ describe('TutorStore', () => {
   it('only allows valid phase transitions', () => {
     store.load('l2');
 
-    expect(store.transition('transcribing')).toBe(false);
+    expect(store.transition('reviewing')).toBe(false);
     expect(store.phase()).toBe('idle');
     expect(store.transition('recording')).toBe(true);
     expect(store.transition('sending')).toBe(false);

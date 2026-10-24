@@ -75,7 +75,22 @@ import { TutorStore } from './tutor-store';
         }
 
         @for (message of store.messages(); track message.id) {
-          <app-chat-message [message]="message" />
+          <app-chat-message [message]="message">
+            @if (message.role === 'TUTOR' && store.speechSupported) {
+              @let speaking = store.speakingId() === message.id;
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors"
+                [class]="speaking ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'"
+                [attr.aria-label]="speaking ? 'Detener lectura de la respuesta' : 'Escuchar respuesta'"
+                [attr.aria-pressed]="speaking"
+                (click)="store.toggleSpeech(message)"
+              >
+                <app-icon [name]="speaking ? 'square' : 'volume-2'" [size]="12" />
+                {{ speaking ? 'Detener' : 'Escuchar' }}
+              </button>
+            }
+          </app-chat-message>
         }
 
         @if (pendingMessage(); as pending) {
@@ -99,42 +114,101 @@ import { TutorStore } from './tutor-store';
         <app-alert-banner
           class="mb-3 block"
           [message]="error.message"
-          [icon]="error.code === 'NETWORK_ERROR' ? 'wifi-off' : 'triangle-alert'"
-          actionLabel="Reintentar"
-          (action)="store.retry()"
+          [icon]="errorIcon()"
+          [actionLabel]="error.actionLabel"
+          (action)="onErrorAction()"
         />
       }
 
-      <form class="rounded-xl border border-slate-300 bg-white transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20" (submit)="$event.preventDefault(); store.send()">
-        <label for="tutor-question" class="sr-only">Escribe tu pregunta</label>
-        <textarea
-          #textarea
-          id="tutor-question"
-          rows="1"
-          class="block max-h-40 w-full resize-none rounded-t-xl border-0 bg-transparent px-3.5 pt-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-          placeholder="Escribe tu pregunta…"
-          [value]="store.draft()"
-          [disabled]="store.isBusy()"
-          [attr.maxlength]="maxLength"
-          (input)="onInput(textarea)"
-          (keydown.enter)="onEnter($any($event))"
-        ></textarea>
-        <div class="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
-          <span class="px-1 text-[11px]" [class]="nearLimit() ? 'text-amber-600' : 'text-slate-400'">
-            @if (nearLimit()) {
-              {{ store.draftLength() }}/{{ maxLength }}
-            } @else {
-              Intro para enviar · Mayús+Intro, nueva línea
-            }
+      @if (store.phase() === 'recording') {
+        <div class="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5" data-testid="recording-bar">
+          <span class="relative flex size-3" aria-hidden="true">
+            <span class="absolute inline-flex size-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+            <span class="relative inline-flex size-3 rounded-full bg-rose-600"></span>
           </span>
-          <div class="flex items-center gap-1.5">
-            <ng-content select="[composerActions]" />
-            <button type="submit" class="btn-primary size-9 p-0" [disabled]="!store.canSend()" aria-label="Enviar pregunta">
-              <app-icon name="send" [size]="16" />
-            </button>
+          <span class="text-sm font-medium tabular-nums text-rose-700">
+            {{ formatSeconds(store.recordingSeconds()) }}
+            <span class="font-normal text-rose-400">/ {{ formatSeconds(store.maxRecordingSeconds) }}</span>
+          </span>
+          <div class="flex h-6 flex-1 items-center justify-center gap-0.5" aria-hidden="true">
+            @for (bar of levelBars; track $index) {
+              <span
+                class="w-1 rounded-full bg-rose-400 transition-[height] duration-75"
+                [style.height.%]="barHeight(bar)"
+              ></span>
+            }
           </div>
+          <button type="button" class="btn-ghost size-9 p-0 text-rose-700 hover:bg-rose-100" aria-label="Cancelar grabación" (click)="store.cancelRecording()">
+            <app-icon name="x" [size]="18" />
+          </button>
+          <button type="button" class="btn size-9 bg-rose-600 p-0 text-white hover:bg-rose-700" aria-label="Detener y transcribir" (click)="store.stopRecording()">
+            <app-icon name="square" [size]="14" />
+          </button>
         </div>
-      </form>
+      } @else {
+        @if (store.phase() === 'reviewing') {
+          <p class="mb-2 flex items-center gap-1.5 text-xs font-medium text-brand-700" data-testid="voice-review">
+            <app-icon name="pencil" [size]="13" /> Transcrito de tu voz · puedes corregirlo antes de enviar
+          </p>
+        }
+        <form
+          class="rounded-xl border bg-white transition-colors focus-within:ring-2"
+          [class]="
+            store.phase() === 'reviewing'
+              ? 'border-brand-500 ring-2 ring-brand-500/20'
+              : 'border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-500/20'
+          "
+          (submit)="$event.preventDefault(); store.send()"
+        >
+          <label for="tutor-question" class="sr-only">Escribe tu pregunta</label>
+          <textarea
+            #textarea
+            id="tutor-question"
+            rows="1"
+            class="block max-h-40 w-full resize-none rounded-t-xl border-0 bg-transparent px-3.5 pt-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+            [placeholder]="store.phase() === 'transcribing' ? 'Transcribiendo…' : 'Escribe tu pregunta o pulsa el micrófono…'"
+            [value]="store.draft()"
+            [disabled]="store.isBusy()"
+            [attr.maxlength]="maxLength"
+            (input)="onInput(textarea)"
+            (keydown.enter)="onEnter($any($event))"
+          ></textarea>
+          <div class="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
+            <span class="px-1 text-[11px]" [class]="nearLimit() ? 'text-amber-600' : 'text-slate-400'">
+              @if (nearLimit()) {
+                {{ store.draftLength() }}/{{ maxLength }}
+              } @else {
+                Intro para enviar · Mayús+Intro, nueva línea
+              }
+            </span>
+            <div class="flex items-center gap-1.5">
+              @if (store.microphoneSupported) {
+                <button
+                  type="button"
+                  class="btn-secondary size-9 p-0"
+                  [disabled]="!store.canRecord()"
+                  [attr.aria-label]="store.phase() === 'reviewing' ? 'Volver a grabar' : 'Preguntar por voz'"
+                  [attr.title]="store.phase() === 'reviewing' ? 'Volver a grabar' : 'Preguntar por voz'"
+                  (click)="store.startRecording()"
+                >
+                  @if (store.phase() === 'transcribing' || store.requestingMicrophone()) {
+                    <app-icon name="loader-circle" [size]="16" class="animate-spin" />
+                  } @else {
+                    <app-icon name="mic" [size]="16" />
+                  }
+                </button>
+              } @else {
+                <span class="grid size-9 place-items-center text-slate-300" title="Tu navegador no permite grabar audio">
+                  <app-icon name="mic-off" [size]="16" />
+                </span>
+              }
+              <button type="submit" class="btn-primary size-9 p-0" [disabled]="!store.canSend()" aria-label="Enviar pregunta">
+                <app-icon name="send" [size]="16" />
+              </button>
+            </div>
+          </div>
+        </form>
+      }
     </footer>
   `,
 })
@@ -158,6 +232,19 @@ export class TutorPanel {
   private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('textarea');
 
   constructor() {
+    // Transcripción lista: foco en el texto (para corregir o pulsar Intro) y altura ajustada al contenido.
+    effect(() => {
+      const element = this.textarea()?.nativeElement;
+      if (element && this.store.phase() === 'reviewing') {
+        queueMicrotask(() => {
+          element.style.height = 'auto';
+          element.style.height = `${element.scrollHeight}px`;
+          element.focus();
+          element.setSelectionRange(element.value.length, element.value.length);
+        });
+      }
+    });
+
     // Tras enviar (borrador vacío) el cuadro de texto vuelve a una línea.
     effect(() => {
       const element = this.textarea()?.nativeElement;
@@ -175,6 +262,36 @@ export class TutorPanel {
         queueMicrotask(() => element.scrollTo?.({ top: element.scrollHeight, behavior: 'smooth' }));
       }
     });
+  }
+
+  /** Barras del medidor de voz: cada una con una sensibilidad distinta para que el movimiento parezca natural. */
+  protected readonly levelBars = [0.5, 0.8, 1, 0.7, 0.9, 0.6, 1, 0.75, 0.55, 0.85, 0.65, 0.95];
+
+  protected readonly errorIcon = computed(() => {
+    const error = this.store.error();
+    if (error?.code === 'NETWORK_ERROR') {
+      return 'wifi-off' as const;
+    }
+    return error?.kind === 'microphone' ? ('mic-off' as const) : ('triangle-alert' as const);
+  });
+
+  protected barHeight(sensitivity: number): number {
+    return 15 + Math.min(85, this.store.recordingLevel() * 85 * sensitivity);
+  }
+
+  protected formatSeconds(total: number): string {
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  protected onErrorAction(): void {
+    if (this.store.error()?.kind === 'microphone') {
+      this.store.dismissError();
+      this.textarea()?.nativeElement.focus();
+      return;
+    }
+    this.store.retry();
   }
 
   protected ask(question: string): void {
