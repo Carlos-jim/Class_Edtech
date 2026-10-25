@@ -28,10 +28,11 @@ docker compose up --build
 
 Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a las dos cuentas de prueba:
 
-> El backend usa `network_mode: host` (puerto `BACKEND_PORT`, por defecto 8081) y JVM con
-> `-Djava.net.preferIPv6Addresses=true`: Groq, en algunas redes, responde **403** por IPv4/bridge
-> (*Access denied. Please check your network settings*) y solo acepta IPv6. El frontend le llama vía
-> `host.docker.internal`.
+> Funciona igual en Linux, macOS y Windows (red bridge de Docker). Si con Groq ves **403**
+> (*Access denied. Please check your network settings*): en algunas redes Groq rechaza la salida desde el bridge de
+> Docker y solo acepta la del propio host. En Linux, añade `COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml`
+> a `.env` (el backend pasa a la red del host, puerto `BACKEND_PORT`, por defecto 8081). La JVM ya prefiere IPv6
+> (`-Djava.net.preferIPv6Addresses=true`).
 
 | Usuario | Contraseña | Acceso |
 |---|---|---|

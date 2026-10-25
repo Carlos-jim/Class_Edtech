@@ -3,9 +3,10 @@ name: lms-tutor
 # Stack completo:   docker compose up --build        → http://localhost:${APP_PORT:-8080}
 # Solo la BD (dev): docker compose up -d postgres
 #
-# El backend usa network_mode: host para que Groq no bloquee la IP NAT del bridge de Docker
-# ("Access denied. Please check your network settings"). Escucha en BACKEND_PORT (8081) y
-# nginx (frontend) le habla vía host.docker.internal.
+# Red bridge por defecto (Linux, macOS y Windows). Si Groq responde 403 desde el bridge
+# ("Access denied. Please check your network settings"), en Linux usa el override con red del host:
+#   docker compose -f docker-compose.yml -f docker-compose.host.yml up --build
+# (o COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml en .env).
 
 services:
   postgres:
@@ -28,20 +29,15 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    # Misma pila de red que el host: Groq acepta la petición (desde el bridge responde 403).
-    network_mode: host
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      # Postgres publicado en el host (ver ports de postgres).
-      DB_HOST: 127.0.0.1
-      DB_PORT: ${DB_PORT:-5433}
+      DB_HOST: postgres
+      DB_PORT: 5432 # puerto interno de la red de compose (no el publicado en el host)
       DB_NAME: ${DB_NAME:-tutor}
       DB_USER: ${DB_USER:-tutor}
       DB_PASSWORD: ${DB_PASSWORD}
-      # Evita choque con el puerto publicado del frontend (APP_PORT).
-      SERVER_PORT: ${BACKEND_PORT:-8081}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (openssl rand -base64 48)}
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-mock}}
@@ -50,8 +46,9 @@ services:
       RATE_LIMIT_LOGIN_PER_MINUTE: ${RATE_LIMIT_LOGIN_PER_MINUTE:-20}
       RATE_LIMIT_QUESTIONS_PER_MINUTE: ${RATE_LIMIT_QUESTIONS_PER_MINUTE:-15}
       RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE: ${RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE:-15}
+    # Sin puertos publicados: solo es accesible a través de nginx (frontend).
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$${SERVER_PORT:-8081}'"]
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$${SERVER_PORT:-8080}'"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -63,10 +60,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      BACKEND_UPSTREAM: host.docker.internal:${BACKEND_PORT:-8081}
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     healthcheck:

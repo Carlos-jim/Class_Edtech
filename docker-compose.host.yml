@@ -1,0 +1,24 @@
+# Override solo para Linux: el backend usa la red del host.
+#
+# Úsalo si Groq responde 403 desde la red bridge de Docker ("Access denied. Please check your network
+# settings"): en algunas redes solo acepta la conexión saliente del propio host (IPv6). No sirve en
+# Docker Desktop (macOS/Windows), donde la red del host es la de la VM.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host.yml up --build
+#   (o COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml en .env)
+
+services:
+  backend:
+    network_mode: host
+    environment:
+      # Postgres publicado en el host (ver ports de postgres en docker-compose.yml).
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${DB_PORT:-5433}
+      # En la red del host no puede usar el 8080 del frontend (APP_PORT).
+      SERVER_PORT: ${BACKEND_PORT:-8081}
+
+  frontend:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      BACKEND_UPSTREAM: host.docker.internal:${BACKEND_PORT:-8081}
