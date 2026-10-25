@@ -11,8 +11,10 @@ export interface ChatMessage {
   /** Texto plano: se muestra con interpolación (escapado), nunca como HTML. */
   readonly content: string;
   readonly inputMode: InputMode | null;
-  /** Solo en mensajes del tutor: si la respuesta se basa en la lección. */
+  /** Solo en mensajes del tutor: si la respuesta se basa en la lección (cita verificada). */
   readonly grounded: boolean | null;
+  /** Fragmento verificado de la lección; solo si grounded === true. */
+  readonly citation: string | null;
   readonly createdAt: string;
 }
 

@@ -6,7 +6,7 @@ Un alumno autorizado abre una lección y pregunta a un tutor de IA **por texto o
 contenido de la lección (o avisa de que no tiene información suficiente), la respuesta **se puede escuchar** y la
 conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la lección ni los mensajes de nadie.
 
-**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Groq (Llama 3.3 + Whisper) · Docker
+**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Groq (gpt-oss-120b + Whisper) · Docker
 
 | Documento | Contenido |
 |---|---|
@@ -27,6 +27,11 @@ docker compose up --build
 ```
 
 Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a las dos cuentas de prueba:
+
+> El backend usa `network_mode: host` (puerto `BACKEND_PORT`, por defecto 8081) y JVM con
+> `-Djava.net.preferIPv6Addresses=true`: Groq, en algunas redes, responde **403** por IPv4/bridge
+> (*Access denied. Please check your network settings*) y solo acepta IPv6. El frontend le llama vía
+> `host.docker.internal`.
 
 | Usuario | Contraseña | Acceso |
 |---|---|---|
@@ -49,6 +54,10 @@ y el recorrido completo es demostrable. Para usar el modelo real, ver la [secci�
 | 05 | **Continuidad** | Recarga la página, o cierra sesión y vuelve a entrar: la conversación de cada lección sigue ahí (es por alumno y por lección). |
 | 06 | **Estados y errores** | El panel muestra *Escuchando…*, *Transcribiendo…*, *El tutor está pensando…*, *Reproduciendo respuesta…*. Para ver la recuperación: escribe una pregunta que contenga `#simular-fallo` (caída simulada de la IA: la pregunta se conserva y aparece *Reintentar*); deniega el permiso del micrófono (*Escribir en su lugar*); o desconecta la red (DevTools → *Offline*). |
 
+La lectura en voz alta usa las voces del navegador (`speechSynthesis`). Si el navegador no tiene ninguna —en Linux
+hace falta `speech-dispatcher`, y los navegadores Flatpak (p. ej. Opera) no lo ven— el panel lo avisa con *Reintentar*
+en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
+
 En el modo simulado la transcripción siempre devuelve «¿Para qué sirve POST?» (se puede editar antes de enviar); con
 Groq se transcribe la voz real.
 
@@ -59,8 +68,9 @@ Groq se transcribe la voz real.
    indique `STT_PROVIDER`).
 3. `docker compose up --build` de nuevo.
 
-Modelos: `llama-3.3-70b-versatile` para el tutor (`GROQ_MODEL`) y `whisper-large-v3-turbo` para la voz. La clave solo
-vive en el backend; si falta con `LLM_PROVIDER=groq`, la aplicación no arranca y explica cómo resolverlo.
+Modelos: `openai/gpt-oss-120b` para el tutor (`GROQ_MODEL`; reemplazo actual del Llama 3.3 retirado en el plan
+gratuito de Groq) y `whisper-large-v3-turbo` para la voz. La clave solo vive en el backend; si falta con
+`LLM_PROVIDER=groq`, la aplicación no arranca y explica cómo resolverlo.
 
 ## 4. Desarrollo local (sin Docker para la app)
 
@@ -79,16 +89,20 @@ Flyway crea el esquema y carga los datos de demostración al arrancar.
 ## 5. Tests y CI
 
 ```bash
-cd backend  && ./mvnw verify       # 104 tests: unitarios, integración (Testcontainers) y E2E de API
-cd frontend && npm run test:ci     # 67 tests unitarios (Vitest)
+cd backend  && ./mvnw verify       # 110 tests: unitarios, integración (Testcontainers) y E2E de API
+cd frontend && npm run test:ci     # 71 tests unitarios (Vitest)
 
 # E2E de interfaz (Playwright, Chromium con micrófono simulado) contra el stack de Docker:
 docker compose up -d --build
-cd frontend && npx playwright install chromium && E2E_BASE_URL=http://localhost:8080 npm run e2e   # 23 tests
+cd frontend && npx playwright install chromium && E2E_BASE_URL=http://localhost:8080 npm run e2e   # suite completa
+
+# Solo el recorrido del enunciado (01–06), pensado también para LLM_PROVIDER=groq:
+E2E_BASE_URL=http://localhost:8080 npm run e2e:poc
 ```
 
 > Los E2E hacen muchas peticiones seguidas: en `.env` sube los límites (`RATE_LIMIT_*_PER_MINUTE=1000`), como hace
-> la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests).
+> la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests). Con Groq, `e2e:poc` usa
+> aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock.
 
 | Nivel | Qué cubre |
 |---|---|
@@ -108,7 +122,7 @@ y del frontend y, si pasan, se levanta el stack Docker completo y se ejecutan lo
 ┌────────────────────────┐   /      ┌──────────┐   /api   ┌──────────────────────────────┐
 │ Login · Mis cursos     │◀────────▶│ SPA + CSP│◀────────▶│ auth      JWT, rate limit    │
 │ Lección + Tutor        │          └──────────┘          │ catalog   AccessPolicy       │
-│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Groq Llama / mock
+│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Groq LLM / mock
 │  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Groq Whisper / mock
 │  · speechSynthesis TTS │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
 └────────────────────────┘                                └──────────────────────────────┘

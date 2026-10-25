@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 class ResilientLlmPortTests {
 
     static final TutorPrompt PROMPT = new TutorPrompt("s", List.of(), "q", new LessonContext("t", "c"));
-    static final TutorAnswer OK = new TutorAnswer("respuesta", true);
+    static final TutorAnswer OK = TutorAnswer.of("respuesta", true);
 
     /** Mismas reglas que producción, pero sin esperas para que el test sea rápido. */
     static final RetryConfig FAST_RETRY = RetryConfig.from(ResilientLlmPort.DEFAULT_RETRY)

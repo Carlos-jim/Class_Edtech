@@ -51,7 +51,7 @@ public class GroqLlmAdapter implements LlmPort {
     }
 
     /** Lo que el prompt exige devolver al modelo. */
-    record StructuredAnswer(String answer, Boolean grounded) {
+    record StructuredAnswer(String answer, Boolean grounded, String citation) {
     }
 
     // --------------------------------------------------------------------------------------------
@@ -84,10 +84,17 @@ public class GroqLlmAdapter implements LlmPort {
         } catch (HttpServerErrorException ex) {
             throw LlmUnavailableException.retryable("Groq: error del servidor (" + ex.getStatusCode().value() + ")", ex);
         } catch (HttpClientErrorException ex) {
-            if (ex.getStatusCode().value() == 401) {
+            var status = ex.getStatusCode().value();
+            if (status == 401) {
                 log.error("Groq rechazó la API key (401). Revisa GROQ_API_KEY.");
+            } else {
+                log.warn("Groq HTTP {}: {}", status, ex.getResponseBodyAsString());
             }
-            throw LlmUnavailableException.permanent("Groq: petición rechazada (" + ex.getStatusCode().value() + ")", ex);
+            // 400 puntual (contexto/modelo) a veces es transitorio en el free tier → un reintento ayuda.
+            if (status == 400) {
+                throw LlmUnavailableException.retryable("Groq: petición rechazada (400)", ex);
+            }
+            throw LlmUnavailableException.permanent("Groq: petición rechazada (" + status + ")", ex);
         } catch (ResourceAccessException ex) {
             throw LlmUnavailableException.retryable("Groq: sin respuesta a tiempo o error de red", ex);
         }
@@ -116,7 +123,8 @@ public class GroqLlmAdapter implements LlmPort {
             if (structured.answer() == null || structured.answer().isBlank() || structured.grounded() == null) {
                 throw LlmUnavailableException.retryable("Groq: JSON sin 'answer' o 'grounded'", null);
             }
-            return new TutorAnswer(structured.answer(), structured.grounded());
+            // La verificación literal de la cita la hace CitationVerifier en TutorService.
+            return new TutorAnswer(structured.answer(), structured.grounded(), structured.citation());
         } catch (JacksonException | IllegalArgumentException ex) {
             throw LlmUnavailableException.retryable("Groq: la salida no es el JSON esperado", ex);
         }

@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Page Object de la pantalla de lección + panel del tutor. */
 export class LessonPage {
@@ -39,6 +39,31 @@ export class LessonPage {
   async ask(question: string): Promise<void> {
     await this.composer.fill(question);
     await this.composer.press('Enter');
+  }
+
+  /**
+   * Envía la pregunta y espera N respuestas del tutor. Si Groq cae (429/400), pulsa Reintentar
+   * hasta {@code retries} veces antes de fallar.
+   */
+  async askAndAwait(question: string, expectedTutorCount: number, retries = 2): Promise<void> {
+    await this.ask(question);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await expect(this.tutorMessages).toHaveCount(expectedTutorCount, { timeout: 45_000 });
+        return;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+        const retryBtn = this.error.getByRole('button', { name: 'Reintentar' });
+        if ((await this.error.count()) > 0 && (await retryBtn.count()) > 0) {
+          await retryBtn.click();
+        } else {
+          await this.page.waitForTimeout(2_000);
+          await this.ask(question);
+        }
+      }
+    }
   }
 
   /** Respuesta n-ésima del tutor (0 = primera) con su insignia de grounding. */

@@ -64,6 +64,7 @@ class TutorApiTests {
                 .andExpect(jsonPath("$.answer.role").value("TUTOR"))
                 .andExpect(jsonPath("$.answer.grounded").value(true))
                 .andExpect(jsonPath("$.answer.content", containsString("crear un nuevo recurso")))
+                .andExpect(jsonPath("$.answer.citation", containsString("crear")))
                 .andExpect(jsonPath("$.answer.id").isString())
                 .andExpect(jsonPath("$.answer.createdAt").isString());
 
@@ -79,6 +80,7 @@ class TutorApiTests {
         ask(ANA, LESSON_2, "¿Cuál es la capital de Francia?", "TEXT")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.answer.grounded").value(false))
+                .andExpect(jsonPath("$.answer.citation").doesNotExist())
                 .andExpect(jsonPath("$.answer.content", startsWith("No encuentro información suficiente")));
     }
 

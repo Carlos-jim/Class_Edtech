@@ -42,6 +42,7 @@ class MockLlmAdapterTests {
         var answer = adapter.answer(prompt("¿Para qué sirve POST?"));
 
         assertThat(answer.grounded()).isTrue();
+        assertThat(answer.citation()).isNotBlank().containsIgnoringCase("crear un nuevo recurso");
         assertThat(answer.answer())
                 .startsWith("Según la lección «Métodos HTTP»:")
                 .contains("crear un nuevo recurso", "no es idempotente")
@@ -58,6 +59,7 @@ class MockLlmAdapterTests {
         var answer = adapter.answer(prompt("¿Cuál es la capital de Francia?"));
 
         assertThat(answer.grounded()).isFalse();
+        assertThat(answer.citation()).isNull();
         assertThat(answer.answer()).contains("No encuentro información suficiente", "«Métodos HTTP»");
     }
 

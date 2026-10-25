@@ -43,6 +43,10 @@ public class Message {
     @Column(updatable = false)
     private Boolean grounded;
 
+    /** Fragmento verificado de la lección; solo en respuestas grounded del tutor. */
+    @Column(updatable = false, length = TutorAnswer.MAX_CITATION_LENGTH)
+    private String citation;
+
     /** Generado por la BD (identity). Solo se usa para ordenar el historial. */
     @Column(insertable = false, updatable = false)
     private Long seq;
@@ -54,7 +58,8 @@ public class Message {
     protected Message() {
     }
 
-    private Message(UUID conversationId, MessageRole role, String content, InputMode inputMode, Boolean grounded) {
+    private Message(UUID conversationId, MessageRole role, String content, InputMode inputMode, Boolean grounded,
+                    String citation) {
         if (content == null || content.isBlank() || content.length() > MAX_CONTENT_LENGTH) {
             throw new IllegalArgumentException("El contenido del mensaje debe tener entre 1 y " + MAX_CONTENT_LENGTH + " caracteres");
         }
@@ -63,14 +68,26 @@ public class Message {
         this.content = content;
         this.inputMode = inputMode;
         this.grounded = grounded;
+        this.citation = citation;
     }
 
     public static Message fromStudent(UUID conversationId, String content, InputMode inputMode) {
-        return new Message(conversationId, MessageRole.STUDENT, content, inputMode, null);
+        return new Message(conversationId, MessageRole.STUDENT, content, inputMode, null, null);
     }
 
-    public static Message fromTutor(UUID conversationId, String content, boolean grounded) {
-        return new Message(conversationId, MessageRole.TUTOR, content, null, grounded);
+    public static Message fromTutor(UUID conversationId, String content, boolean grounded, String citation) {
+        if (grounded && (citation == null || citation.isBlank())) {
+            throw new IllegalArgumentException("Una respuesta grounded requiere una cita verificada de la lección");
+        }
+        if (!grounded) {
+            citation = null;
+        } else {
+            citation = citation.strip();
+            if (citation.length() > TutorAnswer.MAX_CITATION_LENGTH) {
+                citation = citation.substring(0, TutorAnswer.MAX_CITATION_LENGTH - 1) + "…";
+            }
+        }
+        return new Message(conversationId, MessageRole.TUTOR, content, null, grounded, citation);
     }
 
     public UUID getId() {
@@ -95,6 +112,10 @@ public class Message {
 
     public Boolean getGrounded() {
         return grounded;
+    }
+
+    public String getCitation() {
+        return citation;
     }
 
     public Instant getCreatedAt() {

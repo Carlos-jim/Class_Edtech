@@ -20,7 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Orquesta el recorrido del tutor (Facade / Application Service):
- * acceso → contexto (lección + historial) → LLM → persistencia.
+ * acceso → contexto (lección + historial) → LLM → verificación de cita → persistencia.
  *
  * <p>La llamada al LLM se hace fuera de transacción para no retener una conexión a BD mientras la IA responde.
  * Pregunta y respuesta se guardan juntas solo si la IA responde: si falla, el historial no queda con preguntas
@@ -38,16 +38,19 @@ public class TutorService {
     private final ConversationRepository conversations;
     private final MessageRepository messages;
     private final PromptBuilder promptBuilder;
+    private final CitationVerifier citationVerifier;
     private final LlmPort llm;
     private final TransactionTemplate readTx;
     private final TransactionTemplate writeTx;
 
     public TutorService(AccessPolicy accessPolicy, ConversationRepository conversations, MessageRepository messages,
-                        PromptBuilder promptBuilder, LlmPort llm, PlatformTransactionManager transactionManager) {
+                        PromptBuilder promptBuilder, CitationVerifier citationVerifier, LlmPort llm,
+                        PlatformTransactionManager transactionManager) {
         this.accessPolicy = accessPolicy;
         this.conversations = conversations;
         this.messages = messages;
         this.promptBuilder = promptBuilder;
+        this.citationVerifier = citationVerifier;
         this.llm = llm;
         this.readTx = new TransactionTemplate(transactionManager);
         this.readTx.setReadOnly(true);
@@ -73,19 +76,25 @@ public class TutorService {
             return promptBuilder.build(lesson, recent, question);
         });
 
-        TutorAnswer answer;
+        TutorAnswer raw;
         try {
-            answer = llm.answer(prompt);
+            raw = llm.answer(prompt);
         } catch (LlmUnavailableException ex) {
             log.warn("Tutor IA no disponible (alumno={}, lección={}): {}", studentId, lessonId, ex.getMessage());
             throw new ApiException(ErrorCode.AI_UNAVAILABLE);
+        }
+
+        var answer = citationVerifier.verify(raw, prompt.lesson().content());
+        if (raw.grounded() && !answer.grounded()) {
+            log.info("Cita no verificada (alumno={}, lección={}): se degrada grounded→false", studentId, lessonId);
         }
 
         return writeTx.execute(status -> {
             conversations.insertIfAbsent(UUID.randomUUID(), studentId, lessonId);
             var conversation = conversations.findByStudentIdAndLessonId(studentId, lessonId).orElseThrow();
             var savedQuestion = messages.save(Message.fromStudent(conversation.getId(), question.strip(), inputMode));
-            var savedAnswer = messages.save(Message.fromTutor(conversation.getId(), answer.answer(), answer.grounded()));
+            var savedAnswer = messages.save(Message.fromTutor(conversation.getId(), answer.answer(), answer.grounded(),
+                    answer.citation()));
             return new Exchange(savedQuestion, savedAnswer);
         });
     }

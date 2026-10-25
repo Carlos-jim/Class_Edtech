@@ -12,3 +12,11 @@ app:
       requests: 10000
     transcriptions:
       requests: 10000
+
+# Fijo a mock: el .env local con LLM_PROVIDER=groq no debe contaminar la suite.
+tutor:
+  llm:
+    provider: mock
+
+speech:
+  provider: mock

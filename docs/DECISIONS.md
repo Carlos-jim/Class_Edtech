@@ -37,7 +37,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 | Angular 22 (standalone, signals, sin zone.js) | Signals encajan con la máquina de estados del tutor; requisito del participante |
 | Tailwind 4 | Sistema de diseño propio con tokens (ver `DESIGN.md`) sin una librería de componentes pesada |
 | PostgreSQL 17 + Flyway | Migraciones versionadas y datos de demo reproducibles; restricciones de integridad en la BD |
-| Groq (Llama 3.3 70B + Whisper) | Plan gratuito, API compatible con OpenAI, muy baja latencia (importante en voz) |
+| Groq (`openai/gpt-oss-120b` + Whisper) | Plan gratuito, API compatible con OpenAI, muy baja latencia (importante en voz) |
 
 ## 3. Tutor de IA
 
@@ -45,9 +45,11 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 (embeddings + base vectorial) añadiría coste y puntos de fallo sin mejorar la calidad aquí. Si el contenido creciera,
 el siguiente paso sería trocear la lección y recuperar fragmentos (p. ej. pgvector) detrás del mismo `PromptBuilder`.
 
-**Salida estructurada `{answer, grounded}`** (modo JSON de Groq). El prompt exige responder solo con la lección y
-marcar `grounded=false` cuando no basta. La interfaz lo muestra con una insignia; así "indicar cuando no dispone de
-información suficiente" es comprobable y testeable, no solo una frase en el prompt.
+**Salida estructurada `{answer, grounded, citation}`** (modo JSON de Groq). El prompt exige responder solo con la
+lección, marcar `grounded=false` cuando no basta y, si afirma estar grounded, devolver una **cita literal** de la
+lección. `CitationVerifier` comprueba que la cita aparece en el texto (normalizando Markdown/acentos, con un
+respaldo por cobertura de palabras en orden). Si falla, se degrada a `grounded=false` y no se muestra cita. La UI
+enseña insignia + bloque «De la lección: …»; así el indicador no depende solo de lo que diga el modelo.
 
 **Inyección de prompt (mitigación, no garantía).** La lección va delimitada en `<leccion>`; pregunta, historial y
 lección se declaran como datos; se neutralizan las etiquetas delimitadoras en cualquier texto para que nadie pueda
@@ -119,8 +121,9 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 
 ## 8. Límites y aspectos no desarrollados
 
-- **Calidad del grounding**: el indicador `grounded` lo decide el modelo; puede equivocarse. Una verificación posterior
-  (citar el fragmento usado y comprobar que existe en la lección) lo haría más fiable.
+- **Calidad del grounding**: la cita se verifica contra la lección, pero la *respuesta* no se reescribe frase a frase
+  contra el texto. Un modelo podría responder con matices no citados y aun así aportar una cita válida cercana. Mejora
+  posible: exigir solapamiento semántico respuesta↔cita o mostrar varias citas.
 - **Inyección de prompt**: mitigada, no eliminada (ningún prompt la elimina por completo).
 - **Sesión**: JWT de 2 h sin refresh ni revocación (el logout descarta el token en el cliente). Se guarda en
   `sessionStorage`, accesible a JavaScript: la defensa es evitar XSS (CSP + saneado). En producción: cookie
@@ -128,7 +131,9 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 - **Rate limiting en memoria**: válido para una instancia; con varias réplicas haría falta Redis o el API gateway.
 - **Proveedor gratuito**: Groq free tier tiene cuotas por minuto/día; el circuit breaker y los mensajes de error lo
   cubren, pero no hay cola ni degradación a otro proveedor.
-- **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. En modo mock la transcripción
+- **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. Si no hay ninguna (Linux sin
+  `speech-dispatcher`, navegadores Flatpak sin acceso a él) la Web Speech API no da error: simplemente no suena. Se
+  detecta con un temporizador (si no empieza a sonar en 3 s) y se avisa al alumno; no hay TTS en servidor de respaldo. En modo mock la transcripción
   devuelve siempre la misma frase. Los E2E de voz se ejecutan en Chromium; Safari y Firefox no están en la CI.
 - **Respuestas sin streaming**: la respuesta llega completa (indicador "pensando"); con streaming (SSE) se percibiría
   más rápida.
@@ -139,7 +144,7 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 
 ## 9. Siguientes pasos
 
-1. Streaming de respuestas (SSE) y citas del fragmento de la lección usado.
+1. Streaming de respuestas (SSE).
 2. Sesión con cookie `HttpOnly` + refresh token.
 3. RAG por fragmentos (pgvector) cuando el catálogo crezca.
 4. Métricas (latencia, tasa de `grounded=false`, errores por proveedor) para evaluar la calidad del tutor.

@@ -38,6 +38,14 @@ import { Icon } from '../../shared/ui/icon';
             class="whitespace-pre-line rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-2.5 text-sm leading-relaxed text-slate-800"
             data-testid="tutor-message"
           >{{ message().content }}</div>
+          @if (message().grounded && message().citation) {
+            <blockquote
+              class="mt-2 border-l-2 border-emerald-300 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-slate-600"
+              data-testid="tutor-citation"
+            >
+              <span class="font-medium text-emerald-800">De la lección: </span>{{ message().citation }}
+            </blockquote>
+          }
           <div class="mt-1.5 flex flex-wrap items-center gap-2">
             @if (message().grounded) {
               <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">

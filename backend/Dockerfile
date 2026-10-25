@@ -14,4 +14,6 @@ WORKDIR /app
 COPY --from=build /app/target/tutor-backend-*.jar app.jar
 USER app
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# preferIPv6Addresses: en algunas redes Groq responde 403 por IPv4 ("Access denied… network settings")
+# y acepta IPv6; sin este flag el JVM suele elegir A-record IPv4 primero.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Djava.net.preferIPv6Addresses=true", "-jar", "app.jar"]

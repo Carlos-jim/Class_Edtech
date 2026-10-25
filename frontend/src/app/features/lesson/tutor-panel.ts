@@ -224,7 +224,15 @@ export class TutorPanel {
   protected readonly pendingMessage = computed<ChatMessage | null>(() => {
     const pending = this.store.pending();
     return pending
-      ? { id: 'pending', role: 'STUDENT', content: pending.content, inputMode: pending.inputMode, grounded: null, createdAt: '' }
+      ? {
+          id: 'pending',
+          role: 'STUDENT',
+          content: pending.content,
+          inputMode: pending.inputMode,
+          grounded: null,
+          citation: null,
+          createdAt: '',
+        }
       : null;
   });
 

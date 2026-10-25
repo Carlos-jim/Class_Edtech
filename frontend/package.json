@@ -9,6 +9,7 @@
     "test": "ng test",
     "test:ci": "ng test --watch=false",
     "e2e": "playwright test",
+    "e2e:poc": "playwright test e2e/poc-requirements.spec.ts",
     "e2e:report": "playwright show-report"
   },
   "private": true,

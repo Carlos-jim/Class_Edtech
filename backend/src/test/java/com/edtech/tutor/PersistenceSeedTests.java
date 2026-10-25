@@ -74,7 +74,8 @@ class PersistenceSeedTests {
     void conversationHistoryIsScopedToStudentAndLesson() {
         var conversation = conversations.saveAndFlush(new Conversation(ANA, LESSON_1));
         messages.save(Message.fromStudent(conversation.getId(), "¿Para qué sirve POST?", InputMode.VOICE));
-        messages.save(Message.fromTutor(conversation.getId(), "POST sirve para crear recursos.", true));
+        messages.save(Message.fromTutor(conversation.getId(), "POST sirve para crear recursos.", true,
+                "Sirve para crear un nuevo recurso dentro de una colección."));
         messages.flush();
 
         var history = messages.findByConversationIdOrderBySeqAsc(conversation.getId());
@@ -109,7 +110,8 @@ class PersistenceSeedTests {
 
         assertThatThrownBy(() -> Message.fromStudent(conversationId, "  ", InputMode.TEXT))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Message.fromTutor(conversationId, "a".repeat(Message.MAX_CONTENT_LENGTH + 1), true))
+        assertThatThrownBy(() -> Message.fromTutor(conversationId, "a".repeat(Message.MAX_CONTENT_LENGTH + 1), true,
+                "Sirve para crear un nuevo recurso dentro de una colección."))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

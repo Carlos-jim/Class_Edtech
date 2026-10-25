@@ -91,6 +91,7 @@ describe('LessonPage', () => {
     expect(ask).toHaveBeenCalledWith('l2', 'Explícame: POST', 'TEXT');
     expect(el.querySelector('[data-testid=tutor-message]')?.textContent).toContain('POST sirve para crear recursos.');
     expect(el.textContent).toContain('Basado en la lección');
+    expect(el.querySelector('[data-testid=tutor-citation]')?.textContent).toContain('crear un nuevo recurso');
   });
 
   it('renders tutor answers as text, never as HTML', async () => {

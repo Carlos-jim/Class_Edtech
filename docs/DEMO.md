@@ -31,10 +31,11 @@ Groq por configuración), PostgreSQL, todo en Docker.
 
 Como Ana, en *Métodos HTTP*:
 
-1. Sugerencia *Explícame: POST* o escribir «¿Para qué sirve POST?» → insignia verde **Basado en la lección**.
-2. «¿Cuál es la capital de Francia?» → insignia ámbar **Sin información suficiente en la lección**.
-3. Explicar: lección delimitada en el prompt, salida JSON `{answer, grounded}`, defensas frente a inyección,
-   respuestas mostradas como texto (XSS).
+1. Sugerencia *Explícame: POST* o escribir «¿Para qué sirve POST?» → insignia verde **Basado en la lección** y
+   bloque *De la lección:* con la cita verificada.
+2. «¿Cuál es la capital de Francia?» → insignia ámbar **Sin información suficiente en la lección** (sin cita).
+3. Explicar: lección delimitada en el prompt, JSON `{answer, grounded, citation}`, el backend **verifica** que la
+   cita existe en el texto (si no, degrada a no grounded); defensas frente a inyección; respuestas como texto (XSS).
 
 ## 4. Voz — requisito 04 (2 min)
 

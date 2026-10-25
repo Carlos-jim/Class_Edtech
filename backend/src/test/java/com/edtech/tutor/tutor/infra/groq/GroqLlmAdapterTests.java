@@ -58,7 +58,8 @@ class GroqLlmAdapterTests {
                 .andExpect(jsonPath("$.messages[1].role").value("user"))
                 .andExpect(jsonPath("$.messages[2].role").value("assistant"))
                 .andExpect(jsonPath("$.messages[3].content").value("¿Para qué sirve POST?"))
-                .andRespond(withSuccess(completion("{\"answer\":\"POST crea recursos.\",\"grounded\":true}"),
+                .andRespond(withSuccess(completion(
+                                "{\"answer\":\"POST crea recursos.\",\"grounded\":true,\"citation\":\"POST sirve para crear un nuevo recurso.\"}"),
                         MediaType.APPLICATION_JSON));
 
         var answer = adapter.answer(new TutorPrompt("SYSTEM",
@@ -67,14 +68,17 @@ class GroqLlmAdapterTests {
 
         assertThat(answer.answer()).isEqualTo("POST crea recursos.");
         assertThat(answer.grounded()).isTrue();
+        assertThat(answer.citation()).contains("crear un nuevo recurso");
         server.verify();
     }
 
     @Test
     void parsesNotGroundedAnswers() {
-        respond(completion("{\"answer\":\"La lección no trata ese tema.\",\"grounded\":false}"));
+        respond(completion("{\"answer\":\"La lección no trata ese tema.\",\"grounded\":false,\"citation\":null}"));
 
-        assertThat(adapter.answer(prompt()).grounded()).isFalse();
+        var answer = adapter.answer(prompt());
+        assertThat(answer.grounded()).isFalse();
+        assertThat(answer.citation()).isNull();
     }
 
     @Test
@@ -92,13 +96,14 @@ class GroqLlmAdapterTests {
     }
 
     @Test
-    void rejectedCredentialsOrRequestsAreNotRetryable() {
+    void rejectedCredentialsAreNotRetryableButBadRequestIs() {
         server.expect(requestTo(URL)).andRespond(withUnauthorizedRequest());
         assertRetryable(false);
 
         server.reset();
+        // 400 puntual del free tier / modelo: un reintento suele bastar
         server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        assertRetryable(false);
+        assertRetryable(true);
     }
 
     @Test

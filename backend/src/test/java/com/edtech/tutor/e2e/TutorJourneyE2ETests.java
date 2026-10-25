@@ -82,6 +82,7 @@ class TutorJourneyE2ETests {
         assertThat(grounded.getStatusCode().value()).isEqualTo(201);
         assertThat((Boolean) JsonPath.read(grounded.getBody(), "$.answer.grounded")).isTrue();
         assertThat((String) JsonPath.read(grounded.getBody(), "$.answer.content")).contains("crear un nuevo recurso");
+        assertThat((String) JsonPath.read(grounded.getBody(), "$.answer.citation")).isNotBlank();
 
         // 5. Pregunta fuera del temario: el tutor indica que no tiene información suficiente
         var offTopic = ask(lessonId, token, "¿Quién ganó el mundial de 2010?", "TEXT");

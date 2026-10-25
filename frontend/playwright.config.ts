@@ -1,12 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E de la interfaz contra el stack real (nginx + backend + PostgreSQL, IA y voz en modo mock).
+ * E2E de la interfaz contra el stack real (nginx + backend + PostgreSQL).
  *
  *   Stack Docker:  docker compose up -d --build   →  E2E_BASE_URL=http://localhost:8080 npm run e2e
+ *   Solo enunciado: E2E_BASE_URL=http://localhost:8080 npm run e2e:poc   (tolerante a Groq)
  *   Desarrollo:    backend en :8080 + `npm start` →  npm run e2e   (usa http://localhost:4200)
  *
- * Micrófono simulado por Chromium (--use-fake-device-for-media-stream): permite probar la grabación de voz real.
+ * Micrófono simulado por Chromium (--use-fake-device-for-media-stream): permite probar la grabación de voz.
+ * Con STT real (Whisper) el tono del fake-device no es habla: e2e:poc fija la transcripción en ese caso.
  */
 const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
 const isCI = !!process.env['CI'];
