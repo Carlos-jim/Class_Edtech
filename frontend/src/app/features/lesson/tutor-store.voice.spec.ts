@@ -20,11 +20,19 @@ describe('TutorStore · voz', () => {
   };
   const transcribe = vi.fn();
   const ask = vi.fn();
-  const speech = { isSupported: true, speakingId: signal<string | null>(null), speak: vi.fn(), stop: vi.fn(), toggle: vi.fn() };
+  const speech = {
+    isSupported: true,
+    speakingId: signal<string | null>(null),
+    failure: signal<{ id: string; text: string } | null>(null),
+    speak: vi.fn(),
+    stop: vi.fn(),
+    toggle: vi.fn(),
+  };
   let store: TutorStore;
 
   beforeEach(() => {
     [recorder.start, recorder.stop, recorder.cancel, transcribe, ask, speech.speak, speech.stop].forEach((fn) => fn.mockReset());
+    speech.failure.set(null);
     recorder.start.mockResolvedValue(undefined);
     recorder.stop.mockResolvedValue(audio);
     TestBed.configureTestingModule({
@@ -151,5 +159,17 @@ describe('TutorStore · voz', () => {
     store.send();
 
     expect(store.canRecord()).toBe(false);
+  });
+
+  it('warns when the answer cannot be read aloud and retries the same answer', () => {
+    speech.failure.set({ id: 'a1', text: 'POST crea recursos.' });
+    TestBed.tick();
+
+    expect(store.error()).toMatchObject({ kind: 'speech', actionLabel: 'Reintentar' });
+
+    store.retry();
+
+    expect(store.error()).toBeNull();
+    expect(speech.speak).toHaveBeenCalledWith('a1', 'POST crea recursos.');
   });
 });

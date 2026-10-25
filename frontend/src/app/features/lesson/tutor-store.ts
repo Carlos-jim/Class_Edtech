@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ApiError, NETWORK_ERROR, toApiError } from '../../core/api/api-error';
 import { TranscriptionApi } from '../../core/api/transcription-api';
@@ -21,7 +21,7 @@ export const TRANSITIONS: Readonly<Record<TutorPhase, readonly TutorPhase[]>> = 
   sending: ['idle'],
 };
 
-export type TutorErrorKind = 'history' | 'send' | 'microphone' | 'transcription';
+export type TutorErrorKind = 'history' | 'send' | 'microphone' | 'transcription' | 'speech';
 
 export interface TutorError {
   readonly kind: TutorErrorKind;
@@ -90,6 +90,14 @@ export class TutorStore {
   });
 
   constructor() {
+    // La síntesis de voz falla en silencio (navegador sin voces): se avisa en lugar de dejar al alumno esperando.
+    effect(() => {
+      if (this.speech.failure()) {
+        untracked(() =>
+          this.error.set({ kind: 'speech', code: 'SPEECH_UNAVAILABLE', message: SPEECH_UNAVAILABLE, actionLabel: 'Reintentar' }),
+        );
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
       this.historyRequest?.unsubscribe();
       this.sendRequest?.unsubscribe();
@@ -218,6 +226,9 @@ export class TutorStore {
   }
 
   toggleSpeech(message: ChatMessage): void {
+    if (this.error()?.kind === 'speech') {
+      this.error.set(null);
+    }
     this.speech.toggle(message.id, message.content);
   }
 
@@ -256,6 +267,12 @@ export class TutorStore {
         this.transcribe(this.lastAudio);
       } else {
         void this.startRecording();
+      }
+    } else if (kind === 'speech') {
+      this.error.set(null);
+      const failed = this.speech.failure();
+      if (failed) {
+        this.speech.speak(failed.id, failed.text);
       }
     } else {
       this.error.set(null);
@@ -300,6 +317,10 @@ const STATUS_TEXT: Readonly<Record<TutorPhase, string>> = {
   reviewing: 'Revisa la transcripción, corrígela si hace falta y envíala',
   sending: 'El tutor está pensando…',
 };
+
+const SPEECH_UNAVAILABLE =
+  'Tu navegador no ha podido leer la respuesta en voz alta: no tiene voces de síntesis disponibles. ' +
+  'Prueba con Chrome, Edge o Firefox (en Linux necesitan speech-dispatcher). La respuesta sigue disponible por escrito.';
 
 const MICROPHONE_MESSAGES: Readonly<Record<MicrophoneErrorKind, string>> = {
   'permission-denied':

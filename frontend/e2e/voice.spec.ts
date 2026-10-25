@@ -1,20 +1,4 @@
-import { LESSON_2, expect, resetConversations, test } from './fixtures';
-
-/** Sustituye speechSynthesis por un doble que registra lo que se lee (headless no tiene voces). */
-async function stubSpeechSynthesis(page: import('@playwright/test').Page): Promise<void> {
-  await page.addInitScript(() => {
-    const spoken: string[] = [];
-    (window as unknown as { __spoken: string[] }).__spoken = spoken;
-    Object.defineProperty(window, 'speechSynthesis', {
-      configurable: true,
-      value: {
-        speak: (utterance: SpeechSynthesisUtterance) => spoken.push(utterance.text),
-        cancel: () => undefined,
-        getVoices: () => [],
-      },
-    });
-  });
-}
+import { LESSON_2, expect, resetConversations, stubSpeechSynthesis, test } from './fixtures';
 
 test.describe('Interacción por voz', () => {
   test.beforeEach(async ({ page, signInAs }) => {
@@ -103,5 +87,24 @@ test.describe('Interacción por voz', () => {
     await expect(lessonPage.composer).toHaveValue('¿Para qué sirve POST?');
     await expect(lessonPage.recordingBar).toHaveCount(0);
     expect(uploads).toBe(2);
+  });
+});
+
+test.describe('Lectura en voz alta sin voces en el navegador', () => {
+  test.beforeEach(async ({ page, signInAs }) => {
+    resetConversations();
+    await stubSpeechSynthesis(page, { silent: true });
+    await signInAs('ana');
+  });
+
+  test('si no llega a sonar se avisa en lugar de quedarse en silencio', async ({ page, lessonPage }) => {
+    await lessonPage.goto(LESSON_2);
+    await lessonPage.ask('¿Para qué sirve POST?');
+    await expect(lessonPage.tutorMessages).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
+
+    await expect(lessonPage.error).toContainText('no ha podido leer la respuesta en voz alta');
+    await expect(page.getByRole('button', { name: 'Escuchar respuesta' })).toBeVisible();
   });
 });

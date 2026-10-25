@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { test as base, expect, request } from '@playwright/test';
+import { type Page, test as base, expect, request } from '@playwright/test';
 import { LessonPage } from './pages/lesson-page';
 import { LoginPage } from './pages/login-page';
 
@@ -38,6 +38,31 @@ async function apiLogin(baseURL: string, user: DemoUser): Promise<Session> {
 }
 
 /** Borra las conversaciones para que cada test empiece con el tutor vacío (BD del stack de docker compose). */
+/**
+ * Sustituye speechSynthesis por un doble que registra lo que se lee (headless no tiene voces) y emite "start"
+ * como un navegador real. Con {@code silent} imita un navegador sin voces: acepta el texto pero nunca suena.
+ */
+export async function stubSpeechSynthesis(page: Page, { silent = false } = {}): Promise<void> {
+  await page.addInitScript((silent) => {
+    const spoken: string[] = [];
+    (window as unknown as { __spoken: string[] }).__spoken = spoken;
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speak: (utterance: SpeechSynthesisUtterance) => {
+          spoken.push(utterance.text);
+          if (!silent) {
+            setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
+          }
+        },
+        cancel: () => undefined,
+        resume: () => undefined,
+        getVoices: () => [],
+      },
+    });
+  }, silent);
+}
+
 export function resetConversations(): void {
   const user = process.env['DB_USER'] ?? 'tutor';
   const db = process.env['DB_NAME'] ?? 'tutor';
