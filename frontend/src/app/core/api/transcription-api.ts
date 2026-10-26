@@ -6,7 +6,12 @@ export interface TranscriptionResult {
   readonly text: string;
 }
 
-const EXTENSIONS: Record<string, string> = { 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg' };
+const EXTENSIONS: Record<string, string> = {
+  'audio/wav': 'wav',
+  'audio/webm': 'webm',
+  'audio/mp4': 'm4a',
+  'audio/ogg': 'ogg',
+};
 
 /** Voz a texto en el backend (la clave del proveedor nunca llega al navegador). */
 @Injectable({ providedIn: 'root' })

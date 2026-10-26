@@ -14,6 +14,6 @@ WORKDIR /app
 COPY --from=build /app/target/tutor-backend-*.jar app.jar
 USER app
 EXPOSE 8080
-# preferIPv6Addresses: en algunas redes Groq responde 403 por IPv4 ("Access denied… network settings")
-# y acepta IPv6; sin este flag el JVM suele elegir A-record IPv4 primero.
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Djava.net.preferIPv6Addresses=true", "-jar", "app.jar"]
+# Opciones extra de la JVM por entorno: JAVA_TOOL_OPTIONS (p. ej. -Djava.net.preferIPv6Addresses=true solo en redes
+# con IPv6 funcional; forzarlo sin IPv6 rompe las conexiones salientes a los proveedores de IA).
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]

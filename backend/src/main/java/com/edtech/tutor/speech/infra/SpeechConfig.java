@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Elige la implementación de {@link TranscriptionPort} según {@code speech.provider} (Strategy + Factory).
- * Mistral (Voxtral) y Groq (Whisper) comparten el adaptador compatible con OpenAI.
+ * Groq (Whisper) y Mistral (Voxtral) usan {@code /audio/transcriptions}; Gemini transcribe enviando el audio por el chat.
  */
 @Configuration
 @EnableConfigurationProperties(SpeechProperties.class)
@@ -32,6 +32,9 @@ class SpeechConfig {
         }
         var ai = providers.require(selected, "STT_PROVIDER");
         log.info("Voz a texto: proveedor {}, modelo {}", ai.label(), ai.settings().transcriptionModel());
-        return new OpenAiCompatibleTranscriptionAdapter(ai.restClient(), ai.settings(), ai.label());
+        return switch (ai.transcription()) {
+            case AUDIO_TRANSCRIPTIONS -> new OpenAiCompatibleTranscriptionAdapter(ai.restClient(), ai.settings(), ai.label());
+            case CHAT_INPUT_AUDIO -> new ChatAudioTranscriptionAdapter(ai.restClient(), ai.settings(), ai.label());
+        };
     }
 }

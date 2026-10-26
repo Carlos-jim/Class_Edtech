@@ -6,7 +6,7 @@ Un alumno autorizado abre una lección y pregunta a un tutor de IA **por texto o
 contenido de la lección (o avisa de que no tiene información suficiente), la respuesta **se puede escuchar** y la
 conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la lección ni los mensajes de nadie.
 
-**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Mistral (chat + Voxtral) o Groq · Docker
+**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Google Gemini (chat + voz) · Groq / Mistral opcionales · Docker
 
 | Documento | Contenido |
 |---|---|
@@ -56,12 +56,12 @@ Verifica la instalación con `docker run --rm hello-world`.
 
 ## 1. Puesta en marcha
 
-Necesitas una **clave de Mistral** (gratuita, sin tarjeta): https://console.mistral.ai/api-keys
-(alternativa: Groq; ver la [sección 3](#3-proveedor-de-ia-mistral-o-groq)).
+Necesitas una **clave de Google Gemini** (gratuita, sin tarjeta): https://aistudio.google.com/apikey
+(alternativas: ver la [sección 3](#3-proveedor-de-ia)).
 
 ### Primera vez (solo una vez)
 
-**1. Crear la configuración (`.env`).** El script pide la clave de Mistral, genera el secreto JWT y crea `.env`.
+**1. Crear la configuración (`.env`).** El script pide la clave de Gemini, genera el secreto JWT y crea `.env`.
 Si `.env` ya existe **no lo toca**, así que ejecutarlo de nuevo es seguro.
 
 ```bash
@@ -75,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1  # Windows (PowerShel
 <details>
 <summary>Alternativa manual</summary>
 
-Copia `.env.example` a `.env` **una sola vez** y edita en `.env`: `MISTRAL_API_KEY` (tu clave) y `JWT_SECRET` (una
+Copia `.env.example` a `.env` **una sola vez** y edita en `.env`: `GEMINI_API_KEY` (tu clave) y `JWT_SECRET` (una
 cadena aleatoria de al menos 32 caracteres, p. ej. la salida de `openssl rand -base64 48`).
 </details>
 
@@ -110,9 +110,9 @@ Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a l
 | `ana.garcia@demo.edtech` | `Demo1234!` | Matriculada en *Fundamentos de APIs REST* (2 lecciones) |
 | `bruno.lopez@demo.edtech` | `Demo1234!` | Sin acceso al curso |
 
-El tutor y la transcripción de voz usan **Mistral** por defecto. Si falta la clave del proveedor elegido, el backend
-no arranca y explica cuál falta y dónde conseguirla (`docker compose logs backend`). Más detalles en la
-[sección 3](#3-proveedor-de-ia-mistral-o-groq).
+El tutor y la transcripción de voz usan **Google Gemini** por defecto. Si falta la clave del proveedor elegido, el
+backend no arranca y explica cuál falta y dónde conseguirla (`docker compose logs backend`). Más detalles en la
+[sección 3](#3-proveedor-de-ia).
 
 > El puerto se cambia con `APP_PORT` en `.env`. La base de datos se publica solo en `127.0.0.1:${DB_PORT}`.
 > Si `docker compose up` falla con *port is already allocated* (otro contenedor o servicio usa el 8080 o el 5433),
@@ -133,32 +133,28 @@ La lectura en voz alta usa las voces del navegador (`speechSynthesis`). Si el na
 hace falta `speech-dispatcher`, y los navegadores Flatpak (p. ej. Opera) no lo ven— el panel lo avisa con *Reintentar*
 en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
 
-## 3. Proveedor de IA (Mistral o Groq)
+## 3. Proveedor de IA
 
-El tutor (chat) y la voz (transcripción) usan un proveedor con **API compatible con OpenAI**. Los dos tienen plan
-gratuito y comparten los mismos adaptadores, así que **cambiar de proveedor es solo editar `.env`**:
+El tutor (chat) y la voz (transcripción) usan un proveedor con **API compatible con OpenAI**, detrás de los mismos
+adaptadores: **cambiar de proveedor es solo editar `.env`**.
 
-| `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) |
-|---|---|---|---|
-| `mistral` (por defecto) | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` |
-| `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` |
+| `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) | Notas |
+|---|---|---|---|---|
+| `gemini` (por defecto) | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | `gemini-3.5-flash-lite` · el mismo | Gratuito, sin tarjeta. La voz se transcribe enviando el audio (WAV) por el chat |
+| `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` | Gratuito, pero **bloquea algunas redes/regiones** (403 *Access denied*) |
+| `mistral` | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` | Desde oct-2026 su plan gratuito **no permite claves de API** |
 
 1. Crea la clave y ponla en `.env` (el [script de configuración inicial](#primera-vez-solo-una-vez) lo hace para
-   Mistral).
-2. Para usar Groq: `LLM_PROVIDER=groq` y `GROQ_API_KEY=gsk_...`. La voz usa el mismo proveedor salvo que indiques
-   `STT_PROVIDER` (p. ej. chat con Groq y voz con Mistral).
+   Gemini).
+2. Elige proveedor con `LLM_PROVIDER`; la voz usa el mismo salvo que indiques `STT_PROVIDER` (se pueden mezclar).
 3. `docker compose up -d` (recrea el backend con la nueva configuración).
 
-Los modelos se cambian con `MISTRAL_MODEL`, `MISTRAL_TRANSCRIPTION_MODEL`, `GROQ_MODEL` y `GROQ_TRANSCRIPTION_MODEL`.
-Las claves solo viven en el backend.
+Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `GROQ_MODEL`, etc. Las claves solo viven en el
+backend. El navegador convierte cada grabación a **WAV 16 kHz mono** antes de subirla (≈ 1,9 MB por minuto): es el
+formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
 
-> **Groq bloquea algunas redes o regiones**: responde **403** *Access denied. Please check your network settings*
-> (en los logs del backend: `petición rechazada (403)`). En ese caso usa Mistral. En Linux, si el bloqueo es solo
-> de la red bridge de Docker, también puedes probar
-> `COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml` en `.env` (backend en la red del host, puerto
-> `BACKEND_PORT`, por defecto 8081).
->
-> En el plan gratuito de Mistral, las peticiones pueden usarse para entrenar sus modelos: no envíes datos personales.
+> En el plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos: no envíes datos
+> personales. Si ves 503 *high demand*, es un pico temporal de Google: el backend reintenta y la UI ofrece *Reintentar*.
 
 > Existe un proveedor simulado (`LLM_PROVIDER=mock`) **solo para los tests automáticos y la CI**: respuestas
 > deterministas, sin red ni cuota. No está pensado para usar la aplicación.
@@ -215,8 +211,8 @@ y del frontend y, si pasan, se levanta el stack Docker completo y se ejecutan lo
 ┌────────────────────────┐   /      ┌──────────┐   /api   ┌──────────────────────────────┐
 │ Login · Mis cursos     │◀────────▶│ SPA + CSP│◀────────▶│ auth      JWT, rate limit    │
 │ Lección + Tutor        │          └──────────┘          │ catalog   AccessPolicy       │
-│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Mistral / Groq / mock
-│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Voxtral / Whisper / mock
+│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Gemini / Groq / Mistral / mock
+│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Gemini / Whisper / Voxtral / mock
 │  · speechSynthesis TTS │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
 └────────────────────────┘                                └──────────────────────────────┘
 ```

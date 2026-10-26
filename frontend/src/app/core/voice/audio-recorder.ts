@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { toWav } from './wav-encoder';
 
 export type MicrophoneErrorKind =
   | 'unsupported'
@@ -91,7 +92,7 @@ export class AudioRecorder {
     this.startLevelMeter(this.stream);
   }
 
-  /** Detiene la grabación y devuelve el audio. */
+  /** Detiene la grabación y devuelve el audio en WAV 16 kHz (o el original si el navegador no puede convertirlo). */
   stop(): Promise<Blob> {
     const recorder = this.recorder;
     if (!recorder || recorder.state === 'inactive') {
@@ -102,7 +103,7 @@ export class AudioRecorder {
       recorder.onstop = () => {
         const audio = new Blob(this.chunks, { type: recorder.mimeType || 'audio/webm' });
         this.cleanUp();
-        resolve(audio);
+        void toWav(audio).then(resolve);
       };
       recorder.stop();
     });

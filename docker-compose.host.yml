@@ -11,6 +11,8 @@ services:
   backend:
     network_mode: host
     environment:
+      # Solo si tu red tiene IPv6 y el proveedor solo la acepta por ahí:
+      # JAVA_TOOL_OPTIONS: -Djava.net.preferIPv6Addresses=true
       # Postgres publicado en el host (ver ports de postgres en docker-compose.yml).
       DB_HOST: 127.0.0.1
       DB_PORT: ${DB_PORT:-5433}

@@ -1,5 +1,6 @@
 package com.edtech.tutor.shared.ai;
 
+import com.edtech.tutor.shared.ai.AiProvider.TranscriptionApi;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -17,7 +18,7 @@ import org.springframework.core.env.Environment;
 public final class AiProviders {
 
     /** Proveedor por defecto si {@code LLM_PROVIDER} está vacío. */
-    public static final String DEFAULT = "mistral";
+    public static final String DEFAULT = "gemini";
     public static final String MOCK = "mock";
 
     private final Map<String, AiProvider> providers;
@@ -60,14 +61,19 @@ public final class AiProviders {
         AiProviders aiProviders(Environment environment) {
             var binder = Binder.get(environment);
             return new AiProviders(
-                    provider(binder, "mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys"),
-                    provider(binder, "groq", "Groq", "GROQ_API_KEY", "https://console.groq.com/keys"));
+                    provider(binder, "gemini", "Gemini", "GEMINI_API_KEY", "https://aistudio.google.com/apikey",
+                            TranscriptionApi.CHAT_INPUT_AUDIO),
+                    provider(binder, "groq", "Groq", "GROQ_API_KEY", "https://console.groq.com/keys",
+                            TranscriptionApi.AUDIO_TRANSCRIPTIONS),
+                    provider(binder, "mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys",
+                            TranscriptionApi.AUDIO_TRANSCRIPTIONS));
         }
 
-        private static AiProvider provider(Binder binder, String id, String label, String keyEnvVar, String keyUrl) {
+        private static AiProvider provider(Binder binder, String id, String label, String keyEnvVar, String keyUrl,
+                                           TranscriptionApi transcription) {
             var settings = binder.bind("ai." + id, OpenAiCompatibleProperties.class)
                     .orElseThrow(() -> new IllegalStateException("Falta la configuración ai." + id));
-            return new AiProvider(id, label, keyEnvVar, keyUrl, settings);
+            return new AiProvider(id, label, keyEnvVar, keyUrl, transcription, settings);
         }
     }
 }

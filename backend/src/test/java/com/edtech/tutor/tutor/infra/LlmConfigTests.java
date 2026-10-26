@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.edtech.tutor.shared.ai.AiProvider;
+import com.edtech.tutor.shared.ai.AiProvider.TranscriptionApi;
 import com.edtech.tutor.shared.ai.AiProviders;
 import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import java.time.Duration;
@@ -15,41 +16,45 @@ class LlmConfigTests {
     static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
-    void mistralIsTheDefaultProvider() {
-        var providers = providers("mistral-key", "");
+    void geminiIsTheDefaultProvider() {
+        var providers = providers("gemini-key", "", "");
 
         assertThat(LlmConfig.create(null, providers, JSON)).isInstanceOf(ResilientLlmPort.class);
         assertThat(LlmConfig.create(" ", providers, JSON)).isInstanceOf(ResilientLlmPort.class);
     }
 
     @Test
-    void groqCanBeSelectedByConfiguration() {
-        assertThat(LlmConfig.create("GROQ", providers("", "gsk_test"), JSON)).isInstanceOf(ResilientLlmPort.class);
+    void otherProvidersCanBeSelectedByConfiguration() {
+        assertThat(LlmConfig.create("mistral", providers("", "", "m-key"), JSON)).isInstanceOf(ResilientLlmPort.class);
+        assertThat(LlmConfig.create("GROQ", providers("", "gsk_test", ""), JSON)).isInstanceOf(ResilientLlmPort.class);
     }
 
     @Test
     void mockIsOnlyUsedWhenExplicitlySelected() {
-        assertThat(LlmConfig.create(" MOCK ", providers("", ""), JSON)).isInstanceOf(MockLlmAdapter.class);
+        assertThat(LlmConfig.create(" MOCK ", providers("", "", ""), JSON)).isInstanceOf(MockLlmAdapter.class);
     }
 
     @Test
     void selectedProviderWithoutApiKeyFailsFastWithActionableMessage() {
-        assertThatThrownBy(() -> LlmConfig.create("mistral", providers("", "gsk_test"), JSON))
+        assertThatThrownBy(() -> LlmConfig.create(null, providers("", "gsk_test", "m"), JSON))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("LLM_PROVIDER=mistral")
-                .hasMessageContaining("MISTRAL_API_KEY")
-                .hasMessageContaining("console.mistral.ai");
+                .hasMessageContaining("LLM_PROVIDER=gemini")
+                .hasMessageContaining("GEMINI_API_KEY")
+                .hasMessageContaining("aistudio.google.com/apikey");
 
-        assertThatThrownBy(() -> LlmConfig.create("groq", providers("mistral-key", " "), JSON))
+        assertThatThrownBy(() -> LlmConfig.create("mistral", providers("g", "gsk_test", ""), JSON))
+                .hasMessageContaining("MISTRAL_API_KEY");
+
+        assertThatThrownBy(() -> LlmConfig.create("groq", providers("g", " ", "m"), JSON))
                 .hasMessageContaining("GROQ_API_KEY")
                 .hasMessageContaining("console.groq.com/keys");
     }
 
     @Test
     void unknownProviderIsRejectedListingTheValidOnes() {
-        assertThatThrownBy(() -> LlmConfig.create("openai", providers("x", "y"), JSON))
+        assertThatThrownBy(() -> LlmConfig.create("openai", providers("x", "y", "z"), JSON))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("mock, mistral, groq");
+                .hasMessageContaining("mock, gemini, groq, mistral");
     }
 
     @Test
@@ -59,12 +64,15 @@ class LlmConfigTests {
                 .contains("****");
     }
 
-    static AiProviders providers(String mistralKey, String groqKey) {
+    static AiProviders providers(String geminiKey, String groqKey, String mistralKey) {
         return new AiProviders(
-                new AiProvider("mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys",
-                        settings("https://api.mistral.ai/v1", mistralKey)),
+                new AiProvider("gemini", "Gemini", "GEMINI_API_KEY", "https://aistudio.google.com/apikey",
+                        TranscriptionApi.CHAT_INPUT_AUDIO,
+                        settings("https://generativelanguage.googleapis.com/v1beta/openai", geminiKey)),
                 new AiProvider("groq", "Groq", "GROQ_API_KEY", "https://console.groq.com/keys",
-                        settings("https://api.groq.com/openai/v1", groqKey)));
+                        TranscriptionApi.AUDIO_TRANSCRIPTIONS, settings("https://api.groq.com/openai/v1", groqKey)),
+                new AiProvider("mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys",
+                        TranscriptionApi.AUDIO_TRANSCRIPTIONS, settings("https://api.mistral.ai/v1", mistralKey)));
     }
 
     static OpenAiCompatibleProperties settings(String baseUrl, String apiKey) {

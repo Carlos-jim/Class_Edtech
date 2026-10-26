@@ -9,16 +9,16 @@ docker compose exec -T postgres psql -U tutor -d tutor -c "DELETE FROM conversat
 
 - Navegador con permiso de micrófono y altavoz (Chrome o Edge recomendados).
 - Pestañas listas: la app, el repositorio en GitHub (pestaña *Actions* con el último CI en verde) y `docs/DECISIONS.md`.
-- `MISTRAL_API_KEY` en `.env` (el tutor y la voz usan Mistral por defecto; Groq es la alternativa con
-  `LLM_PROVIDER=groq`). Comprobar antes que hay red hacia el proveedor elegido (`docker compose logs backend`).
+- `GEMINI_API_KEY` en `.env` (el tutor y la voz usan Gemini por defecto; Groq y Mistral son seleccionables con
+  `LLM_PROVIDER`). Comprobar antes que hay red hacia el proveedor elegido (`docker compose logs backend`).
 
 ## 1. Contexto (1 min)
 
 "POC de un LMS con tutor de IA. Lo importante: el tutor responde **solo con la lección**, por texto o voz, la
 conversación se conserva, y el acceso está protegido de verdad en el backend."
 
-Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (Mistral o
-Groq por configuración; un adaptador simulado para los tests), PostgreSQL, todo en Docker.
+Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (Gemini por
+defecto, Groq o Mistral por configuración; un adaptador simulado para los tests), PostgreSQL, todo en Docker.
 
 ## 2. Acceso y contenido — requisitos 01 y 02 (1,5 min)
 
@@ -59,7 +59,7 @@ Recargar la página (o salir y volver a entrar): la conversación sigue. Cambiar
 
 - GitHub *Actions*: CI con backend, frontend y E2E sobre Docker.
 - Tests: 194 (backend 104, frontend 67, Playwright 23 con micrófono simulado y auditoría de accesibilidad).
-- `docs/DECISIONS.md`: decisiones (sin RAG por tamaño, proveedor intercambiable: Mistral por defecto tras el bloqueo de red de Groq, revisión de la transcripción…) y
+- `docs/DECISIONS.md`: decisiones (sin RAG por tamaño, proveedor intercambiable: Gemini tras el bloqueo de red de Groq y el fin de las claves gratuitas de Mistral, revisión de la transcripción…) y
   límites honestos (grounding decidido por el modelo, JWT en `sessionStorage`, rate limit en memoria).
 
 ## Preguntas probables

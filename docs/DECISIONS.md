@@ -18,8 +18,8 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 | Patrón | Dónde | Para qué |
 |---|---|---|
 | Ports & Adapters | `LlmPort`, `TranscriptionPort` | El dominio no depende del proveedor; el mock permite tests y CI deterministas, sin claves |
-| Strategy + Factory | `LlmConfig`, `SpeechConfig`, `AiProviders` | Elegir proveedor por configuración (`mistral` / `groq` / `mock`) y fallar al arrancar si falta la clave |
-| Adapter | `OpenAiCompatibleLlmAdapter`, `OpenAiCompatibleTranscriptionAdapter` (Mistral y Groq); `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
+| Strategy + Factory | `LlmConfig`, `SpeechConfig`, `AiProviders` | Elegir proveedor por configuración (`gemini` / `groq` / `mistral` / `mock`) y fallar al arrancar si falta la clave |
+| Adapter | `OpenAiCompatibleLlmAdapter`, `OpenAiCompatibleTranscriptionAdapter`, `ChatAudioTranscriptionAdapter`; `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
 | Decorator | `ResilientLlmPort` | Añadir retry y circuit breaker a cualquier `LlmPort` sin modificarlo |
 | Facade / Application Service | `TutorService` | Un único punto que orquesta acceso → contexto → IA → persistencia |
 | Builder | `PromptBuilder` | Construir el prompt con la lección delimitada y defensas frente a inyección |
@@ -37,7 +37,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 | Angular 22 (standalone, signals, sin zone.js) | Signals encajan con la máquina de estados del tutor; requisito del participante |
 | Tailwind 4 | Sistema de diseño propio con tokens (ver `DESIGN.md`) sin una librería de componentes pesada |
 | PostgreSQL 17 + Flyway | Migraciones versionadas y datos de demo reproducibles; restricciones de integridad en la BD |
-| Mistral (`mistral-small` + Voxtral) por defecto; Groq (`gpt-oss-120b` + Whisper) como alternativa | Planes gratuitos, API compatible con OpenAI (mismos adaptadores), chat y voz en un mismo proveedor |
+| Google Gemini (`gemini-3.5-flash-lite`, chat y voz) por defecto; Groq y Mistral seleccionables | Gratuito sin tarjeta y accesible desde la red del desarrollador; API compatible con OpenAI (mismos adaptadores) |
 
 ## 3. Tutor de IA
 
@@ -55,14 +55,21 @@ enseña insignia + bloque «De la lección: …»; así el indicador no depende 
 lección se declaran como datos; se neutralizan las etiquetas delimitadoras en cualquier texto para que nadie pueda
 "cerrar" el bloque. Un LLM puede seguir equivocándose: ver límites.
 
-**Proveedor intercambiable por configuración (Mistral por defecto, Groq como alternativa).** Durante el desarrollo
-Groq empezó a responder `403 Access denied` desde la red del desarrollador (bloqueo de red/región, no de la clave).
-Como ambos exponen una API compatible con OpenAI, los adaptadores se generalizaron (`OpenAiCompatibleLlmAdapter`,
-`OpenAiCompatibleTranscriptionAdapter`) y un registro (`AiProviders`) asocia cada proveedor con su URL, modelos y
-variable de clave. Cambiar de proveedor —o usar uno para el chat y otro para la voz— es editar `.env`; añadir otro
-compatible es una entrada más en el registro. La aplicación no arranca si falta la clave del proveedor elegido, y el
-mensaje dice cuál y dónde conseguirla. Solo se envían los campos comunes a todos (p. ej. la transcripción no envía
-`response_format`, que Mistral no documenta).
+**Proveedor intercambiable por configuración (Gemini por defecto).** El proveedor inicial era Groq. Durante el
+desarrollo empezó a responder `403 Access denied` desde la red del desarrollador (bloqueo de red/región, no de la
+clave). Se generalizaron los adaptadores a "API compatible con OpenAI" y se probó Mistral, cuyo plan gratuito dejó de
+permitir claves de API en octubre de 2026. Gemini (Google AI Studio) es gratuito, sin tarjeta y accesible desde esa red,
+y quedó como proveedor por defecto **tras verificarlo con la clave real** (chat en modo JSON con cita verificada y
+transcripción de voz). Un registro (`AiProviders`) asocia cada proveedor con su URL, modelos, variable de clave y vía de
+transcripción; cambiar de proveedor —o usar uno para el chat y otro para la voz— es editar `.env`. La aplicación no
+arranca si falta la clave del proveedor elegido y el mensaje dice cuál y dónde conseguirla.
+
+**Voz con Gemini: audio por el chat y WAV en el navegador.** Gemini no ofrece `/audio/transcriptions`; su API
+compatible acepta audio dentro del chat (`input_audio`), pero solo WAV o MP3 (rechaza el webm de Chrome/Edge y el ogg de
+Firefox). `ChatAudioTranscriptionAdapter` envía el audio con la instrucción de transcribirlo literalmente, y el
+navegador convierte cada grabación a **WAV 16 kHz mono** (`OfflineAudioContext` + codificador PCM propio) antes de
+subirla: es el formato que aceptan todos los proveedores y ocupa ~1,9 MB por minuto. Si el navegador no pudiera
+decodificar la grabación, se envía la original.
 
 **Mock solo para tests.** El mock
 determinista (`LLM_PROVIDER=mock`) busca la sección de la lección con más palabras clave de la pregunta y, si no hay
@@ -139,8 +146,9 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
   `sessionStorage`, accesible a JavaScript: la defensa es evitar XSS (CSP + saneado). En producción: cookie
   `HttpOnly` + `SameSite` con refresh token rotatorio.
 - **Rate limiting en memoria**: válido para una instancia; con varias réplicas haría falta Redis o el API gateway.
-- **Proveedor gratuito**: los planes gratuitos tienen cuotas por minuto/día y condiciones cambiantes (Groq bloquea
-  algunas redes; en el gratuito de Mistral las peticiones pueden usarse para entrenar). El circuit breaker y los
+- **Proveedor gratuito**: los planes gratuitos tienen cuotas por minuto/día, picos de demanda (Gemini responde a veces
+  503 *high demand*) y condiciones cambiantes (Groq bloquea algunas redes; Mistral retiró las claves gratuitas; en el
+  plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos). El circuit breaker y los
   mensajes de error lo cubren y se cambia de proveedor desde `.env`, pero no hay conmutación automática a otro
   proveedor.
 - **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. Si no hay ninguna (Linux sin

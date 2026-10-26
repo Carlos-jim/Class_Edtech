@@ -18,7 +18,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host 'Clave de Mistral (gratuita, sin tarjeta): https://console.mistral.ai/api-keys'
+Write-Host 'Clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey'
 $secure = Read-Host 'Pega tu clave (no se muestra al escribir)' -AsSecureString
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
@@ -38,7 +38,7 @@ $jwtSecret = [Convert]::ToBase64String($bytes)
 
 $text = [IO.File]::ReadAllText((Join-Path (Get-Location) '.env.example'))
 $text = $text -replace '(?m)^JWT_SECRET=[^\r\n]*', "JWT_SECRET=$jwtSecret"
-$text = $text -replace '(?m)^MISTRAL_API_KEY=[^\r\n]*', "MISTRAL_API_KEY=$apiKey"
+$text = $text -replace '(?m)^GEMINI_API_KEY=[^\r\n]*', "GEMINI_API_KEY=$apiKey"
 # UTF-8 sin BOM: docker compose no admite el BOM al principio del fichero.
 [IO.File]::WriteAllText($envPath, $text, (New-Object System.Text.UTF8Encoding $false))
 

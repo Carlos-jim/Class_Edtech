@@ -15,7 +15,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Clave de Mistral (gratuita, sin tarjeta): https://console.mistral.ai/api-keys"
+echo "Clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey"
 read -rsp "Pega tu clave (no se muestra al escribir): " api_key
 echo
 if [[ ! "$api_key" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
@@ -28,7 +28,7 @@ jwt_secret=$(head -c 48 /dev/urandom | base64 | tr -d '\n')
 
 umask 077 # .env solo legible por el usuario
 sed -e "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" \
-    -e "s|^MISTRAL_API_KEY=.*|MISTRAL_API_KEY=${api_key}|" \
+    -e "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=${api_key}|" \
     .env.example > .env
 
 echo "✔ .env creado. Siguiente paso (la primera vez tarda unos minutos):"
