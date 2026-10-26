@@ -127,9 +127,10 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 
 ## 7. Calidad
 
-- **194 tests** automatizados: 104 en el backend (unitarios, integración con Testcontainers y E2E de API), 67
-  unitarios en el frontend (Vitest) y 23 E2E de interfaz (Playwright) contra el stack Docker real, con micrófono
-  simulado.
+- **261 tests** automatizados: 128 en el backend (unitarios, integración con Testcontainers y E2E de API), 80
+  unitarios en el frontend (Vitest) y 53 E2E de interfaz (Playwright) contra el stack Docker real en Chromium
+  (escritorio y móvil), Firefox y WebKit, con micrófono simulado. Además, 3 E2E opcionales contra la IA real
+  (`npm run e2e:live`), fuera de la CI, que usan una pregunta hablada real como micrófono.
 - Los tests de seguridad se validaron también "rompiendo" el código a propósito (p. ej. quitar la comprobación de
   matrícula hace fallar los tests de IDOR).
 - CI en GitHub Actions: backend → frontend → E2E sobre `docker compose`.
@@ -154,7 +155,7 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 - **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. Si no hay ninguna (Linux sin
   `speech-dispatcher`, navegadores Flatpak sin acceso a él) la Web Speech API no da error: simplemente no suena. Se
   detecta con un temporizador (si no empieza a sonar en 3 s) y se avisa al alumno; no hay TTS en servidor de respaldo. En modo mock la transcripción
-  devuelve siempre la misma frase. Los E2E de voz se ejecutan en Chromium; Safari y Firefox no están en la CI.
+  devuelve siempre la misma frase. La voz se prueba en Chromium y Firefox con micrófono simulado; en WebKit (Safari) solo el recorrido de texto, porque Playwright no simula el micrófono en ese motor.
 - **Respuestas sin streaming**: la respuesta llega completa (indicador "pensando"); con streaming (SSE) se percibiría
   más rápida.
 - **Fuera de alcance por el enunciado**: gestión de cursos y matrículas, registro de usuarios, roles de profesor,
@@ -168,4 +169,4 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
 2. Sesión con cookie `HttpOnly` + refresh token.
 3. RAG por fragmentos (pgvector) cuando el catálogo crezca.
 4. Métricas (latencia, tasa de `grounded=false`, errores por proveedor) para evaluar la calidad del tutor.
-5. E2E en Firefox y WebKit.
+5. Probar la voz en Safari real (iOS/macOS), que Playwright no puede simular.

@@ -1,4 +1,6 @@
 import { execSync } from 'node:child_process';
+import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type Page, test as base, expect, request } from '@playwright/test';
 import { LessonPage } from './pages/lesson-page';
@@ -12,6 +14,68 @@ export const USERS = {
   bruno: { email: 'bruno.lopez@demo.edtech', name: 'Bruno López' },
 } as const;
 export type DemoUser = keyof typeof USERS;
+export const STUDENT_IDS: Record<DemoUser, string> = {
+  ana: 'a1b2c3d4-0000-4000-8000-000000000001',
+  bruno: 'a1b2c3d4-0000-4000-8000-000000000002',
+};
+
+/**
+ * Firma un JWT como lo hace el backend (HS256, emisor lms-tutor) con el JWT_SECRET del .env del stack.
+ * Permite probar casos reales de servidor, como un token ya caducado, sin esperar dos horas.
+ */
+export function mintToken(user: DemoUser, { expiresInSeconds }: { expiresInSeconds: number }): string {
+  const env = readFileSync(resolve(__dirname, '../../.env'), 'utf8');
+  const secret = env.match(/^JWT_SECRET=(.*)$/m)?.[1]?.trim();
+  if (!secret) {
+    throw new Error('JWT_SECRET no encontrado en .env (necesario para firmar tokens de prueba)');
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const header = encode({ alg: 'HS256' });
+  const payload = encode({
+    iss: 'lms-tutor',
+    sub: STUDENT_IDS[user],
+    name: USERS[user].name,
+    iat: now - 7200,
+    exp: now + expiresInSeconds,
+  });
+  const signature = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url');
+  return `${header}.${payload}.${signature}`;
+}
+
+/** Inyecta en el navegador una sesión con el token indicado (el cliente la cree vigente durante una hora). */
+export async function injectSession(page: Page, user: DemoUser, token: string): Promise<void> {
+  const session = {
+    token,
+    expiresAt: Date.now() + 3600_000,
+    student: { id: STUDENT_IDS[user], email: USERS[user].email, displayName: USERS[user].name },
+  };
+  await page.addInitScript(
+    ([key, value]) => window.sessionStorage.setItem(key, value),
+    ['edtech.session', JSON.stringify(session)] as const,
+  );
+}
+
+/** Captura el cuerpo de las peticiones POST a una ruta de la API sin alterarlas. */
+export async function captureRequestBody(page: Page, pattern: string): Promise<Buffer[]> {
+  const bodies: Buffer[] = [];
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === 'POST') {
+      bodies.push(route.request().postDataBuffer() ?? Buffer.alloc(0));
+    }
+    await route.fallback();
+  });
+  return bodies;
+}
+
+/** Respuesta de error de la API con el formato real del backend (RFC 9457 + code). */
+export function problem(status: number, code: string, detail: string) {
+  return {
+    status,
+    contentType: 'application/problem+json',
+    body: JSON.stringify({ type: 'about:blank', status, code, detail }),
+  };
+}
 
 interface Session {
   readonly token: string;

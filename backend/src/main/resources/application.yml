@@ -68,7 +68,9 @@ ai:
     temperature: 0.2 # baja: respuestas fieles a la lección
     max-tokens: 1000
     connect-timeout: 3s
-    read-timeout: 45s
+    # El modelo lite responde en 1-5 s; en picos de demanda Gemini puede quedarse colgado: mejor fallar pronto,
+    # reintentar una vez y, si sigue, ofrecer "Reintentar" al alumno que esperar hasta 90 s.
+    read-timeout: 20s
   mistral:
     api-key: ${MISTRAL_API_KEY:}
     base-url: https://api.mistral.ai/v1

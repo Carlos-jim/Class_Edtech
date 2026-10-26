@@ -176,33 +176,54 @@ Flyway crea el esquema y carga los datos de demostración al arrancar.
 ## 5. Tests y CI
 
 ```bash
-cd backend  && ./mvnw verify       # 112 tests: unitarios, integración (Testcontainers) y E2E de API
-cd frontend && npm run test:ci     # 74 tests unitarios (Vitest)
-
-# E2E de interfaz (Playwright, Chromium con micrófono simulado) contra el stack de Docker.
-# La suite completa espera las respuestas deterministas del proveedor simulado:
-LLM_PROVIDER=mock STT_PROVIDER=mock docker compose up -d --build
-cd frontend && npx playwright install chromium && E2E_BASE_URL=http://localhost:8080 npm run e2e   # suite completa
-
-# Solo el recorrido del enunciado (01–06), también con el proveedor real (docker compose up -d --build, sin variables):
-E2E_BASE_URL=http://localhost:8080 npm run e2e:poc
+cd backend  && ./mvnw verify       # 128 tests: unitarios, integración (Testcontainers) y E2E de API
+cd frontend && npm run test:ci     # 80 tests unitarios (Vitest)
 ```
 
-> Los E2E hacen muchas peticiones seguidas: en `.env` sube los límites (`RATE_LIMIT_*_PER_MINUTE=1000`), como hace
-> la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests). Con un proveedor real, `e2e:poc`
-> usa aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock. Al terminar, vuelve al
-> proveedor real con `docker compose up -d`.
+**E2E de interfaz (Playwright)** contra el stack de Docker real. La suite principal usa el proveedor simulado
+(respuestas deterministas, sin cuota) y límites de uso altos, como la CI:
+
+```bash
+LLM_PROVIDER=mock STT_PROVIDER=mock RATE_LIMIT_LOGIN_PER_MINUTE=1000 RATE_LIMIT_QUESTIONS_PER_MINUTE=1000 \
+  RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE=1000 docker compose up -d --build
+cd frontend && npx playwright install --with-deps chromium firefox webkit
+E2E_BASE_URL=http://localhost:8080 npm run e2e            # 53 tests: Chromium (escritorio y móvil), Firefox y WebKit
+E2E_BASE_URL=http://localhost:8080 npm run e2e:cross      # solo Firefox y WebKit (tests @cross)
+```
+
+**IA real** (no se ejecuta en la CI: gasta cuota y depende de la red). Con el stack levantado con tu clave de Gemini:
+
+```bash
+docker compose up -d                                      # proveedor real (gemini)
+cd frontend && E2E_BASE_URL=http://localhost:8080 npm run e2e:live   # 3 tests: cita verificada, fuera de temario, voz hablada real
+E2E_BASE_URL=http://localhost:8080 npm run e2e:poc        # requisitos 01–06 con aserciones semánticas
+```
+
+`e2e:live` usa como micrófono una pregunta hablada real (`e2e/assets/pregunta-post.wav`) y, ante picos de demanda del
+proveedor, espera y pulsa *Reintentar* como haría un alumno.
+
+> Los E2E reinician las conversaciones entre tests (`docker compose exec postgres`), así que necesitan Docker en la
+> máquina. **WebKit en Linux no Ubuntu** (p. ej. Fedora) no arranca por dependencias del sistema: ejecútalo en la
+> imagen oficial de Playwright y conéctate a ella:
+> `docker run -d --name pw --network host --init mcr.microsoft.com/playwright:v1.64.1-noble npx -y playwright@1.64.1 run-server --port 3333 --host 127.0.0.1`
+> y después `PW_WEBKIT_WS=ws://127.0.0.1:3333/ E2E_BASE_URL=http://localhost:8080 npx playwright test --project=webkit`.
 
 | Nivel | Qué cubre |
 |---|---|
-| Backend · unitarios | Prompt (grounding, inyección), proveedores IA/voz (contrato HTTP, clasificación de errores, timeouts), retry y circuit breaker, validación de audio, rate limiter |
+| Backend · unitarios | Prompt (grounding, inyección), proveedores IA/voz (contrato HTTP, audio por chat, clasificación de errores, timeouts), retry y circuit breaker, validación de audio, rate limiter |
 | Backend · integración | JWT (token manipulado, caducado, otro secreto/emisor), CORS, cabeceras, **IDOR** entre alumnos, validación, fallos de IA y voz, límites de uso |
 | Backend · E2E de API | Servidor real: login → curso → lección → voz → preguntas → nuevo login → historial; cuenta sin acceso |
-| Frontend · unitarios | Sesión, interceptors, guards, saneado de Markdown (XSS), máquina de estados del tutor (texto y voz), grabación y lectura en voz alta, páginas |
-| **E2E de interfaz** | Recorrido completo, control de acceso e IDOR, historial, fallo de IA y sin conexión, XSS, voz (grabar → revisar → enviar → escuchar), micrófono denegado, reintento de transcripción, móvil y **accesibilidad WCAG 2.1 AA (axe-core)** |
+| Frontend · unitarios | Sesión, interceptors, guards, saneado de Markdown (XSS), máquina de estados del tutor (texto y voz), grabación, **conversión a WAV**, lectura en voz alta, páginas |
+| **E2E · recorrido y acceso** | Requisitos 01–06, login con `returnUrl`, cierre de sesión, Bruno sin acceso, **IDOR**, sin token, navegación anterior/siguiente con historial por lección, **solo teclado** |
+| **E2E · tutor** | Respuesta basada en la lección, fuera de temario, historial al volver, sugerencias, fallo de IA y reintento, sin conexión, **429**, **XSS**, validación (vacía, límite de 2000) |
+| **E2E · sesión** | **Token caducado en el servidor** (firmado como el backend) → login → vuelta a la lección; caducidad a mitad de una pregunta sin perder la conversación |
+| **E2E · voz** | Grabar → revisar → enviar → escuchar; cancelar; micrófono denegado; **subida en WAV 16 kHz mono**; sin voz (422) → *Grabar de nuevo*; audio demasiado grande (413); **corte automático a los 60 s**; reintento con la misma grabación; navegador sin voces |
+| **E2E · navegadores y accesibilidad** | Recorrido y voz en **Firefox**; recorrido en **WebKit** (Safari); móvil; **WCAG 2.1 AA (axe-core)** |
+| **E2E · IA real** (`e2e:live`) | Gemini: cita verificada, *Sin información suficiente*, pregunta hablada real transcrita y respondida |
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): en cada push y PR se ejecutan los tests del backend
-y del frontend y, si pasan, se levanta el stack Docker completo y se ejecutan los E2E de Playwright.
+y del frontend y, si pasan, se levanta el stack Docker completo y se ejecutan los E2E de Playwright en Chromium,
+Firefox y WebKit.
 
 ## 6. Arquitectura
 

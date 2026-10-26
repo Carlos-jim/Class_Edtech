@@ -66,6 +66,26 @@ export class LessonPage {
     }
   }
 
+  /**
+   * Espera N respuestas del tutor tras un envío ya hecho. Si el proveedor de IA falla (503, timeout, circuito
+   * abierto), espera y pulsa Reintentar como haría un alumno, hasta {@code retries} veces.
+   */
+  async awaitAnswers(expectedTutorCount: number, retries = 4, waitBetweenMs = 15_000): Promise<void> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await expect(this.tutorMessages).toHaveCount(expectedTutorCount, { timeout: 30_000 });
+        return;
+      } catch (error) {
+        const retryButton = this.error.getByRole('button', { name: 'Reintentar' });
+        if (attempt >= retries || (await retryButton.count()) === 0) {
+          throw error;
+        }
+        await this.page.waitForTimeout(waitBetweenMs); // deja que pase el pico o que se cierre el circuito
+        await retryButton.click();
+      }
+    }
+  }
+
   /** Respuesta n-ésima del tutor (0 = primera) con su insignia de grounding. */
   answer(index: number): Locator {
     return this.tutorMessages.nth(index);

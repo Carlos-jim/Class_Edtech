@@ -10,7 +10,9 @@
     "test:ci": "ng test --watch=false",
     "e2e": "playwright test",
     "e2e:poc": "playwright test e2e/poc-requirements.spec.ts",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "e2e:live": "E2E_LIVE=1 playwright test --project=live",
+    "e2e:cross": "playwright test --project=firefox --project=webkit"
   },
   "private": true,
   "packageManager": "npm@11.19.1",

@@ -1,7 +1,7 @@
 import { DEMO_PASSWORD, LESSON_2, USERS, expect, test } from './fixtures';
 
 test.describe('Autenticación', () => {
-  test('una ruta privada sin sesión lleva al login y, tras entrar, vuelve a esa ruta', async ({ page, loginPage }) => {
+  test('una ruta privada sin sesión lleva al login y, tras entrar, vuelve a esa ruta', { tag: '@cross' }, async ({ page, loginPage }) => {
     await page.goto(`/lessons/${LESSON_2}`);
 
     await expect(page).toHaveURL(/\/login\?returnUrl=/);

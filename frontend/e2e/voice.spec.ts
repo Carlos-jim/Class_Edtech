@@ -7,10 +7,12 @@ test.describe('Interacción por voz', () => {
     await signInAs('ana');
   });
 
-  test('grabar → transcribir → revisar y editar → enviar como pregunta de voz → escuchar la respuesta', async ({
+  test('grabar → transcribir → revisar y editar → enviar como pregunta de voz → escuchar la respuesta', { tag: '@cross' }, async ({
     page,
     lessonPage,
+    browserName,
   }) => {
+    test.skip(browserName === 'webkit', 'WebKit no ofrece micrófono simulado en Playwright');
     await lessonPage.goto(LESSON_2);
 
     await lessonPage.micButton.click();

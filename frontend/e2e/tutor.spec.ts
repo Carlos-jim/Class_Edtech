@@ -6,7 +6,7 @@ test.describe('Tutor IA por texto', () => {
     await signInAs('ana');
   });
 
-  test('recorrido: curso → lección → pregunta con respuesta basada en el material', async ({ page, lessonPage }) => {
+  test('recorrido: curso → lección → pregunta con respuesta basada en el material', { tag: '@cross' }, async ({ page, lessonPage }) => {
     await page.goto('/courses');
     await page.getByRole('link', { name: /Empezar curso: Fundamentos de APIs REST/ }).click();
     await expect(lessonPage.title).toContainText('Introducción a las APIs REST');
@@ -22,7 +22,7 @@ test.describe('Tutor IA por texto', () => {
     await expect(lessonPage.badgeOf(0)).toContainText('Basado en la lección');
   });
 
-  test('si la lección no cubre la pregunta, el tutor lo indica', async ({ lessonPage }) => {
+  test('si la lección no cubre la pregunta, el tutor lo indica', { tag: '@cross' }, async ({ lessonPage }) => {
     await lessonPage.goto(LESSON_2);
 
     await lessonPage.ask('¿Cuál es la capital de Francia?');
