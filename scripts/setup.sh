@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Configuración inicial: crea .env a partir de .env.example y completa lo que falte (secreto JWT y clave de Gemini).
+# Configuración inicial: crea .env a partir de .env.example y genera el secreto JWT. No pide la clave de Gemini:
+# si falta, indica dónde pegarla.
 # Lo que ya está configurado no se toca: ejecutarlo de nuevo es seguro.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -37,28 +38,23 @@ if [[ -z "$(value_of JWT_SECRET)" ]]; then
 fi
 
 provider=$(value_of LLM_PROVIDER)
+missing_key=false
 if [[ "${provider:-gemini}" == "gemini" && -z "$(value_of GEMINI_API_KEY)" ]]; then
-  echo "Falta la clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey"
-  read -rsp "Pega tu clave (no se muestra al escribir): " raw_key
-  echo
-  # Al pegar pueden colarse espacios, comillas o caracteres de control: se quitan.
-  api_key=$(printf '%s' "$raw_key" | tr -d '[:space:][:cntrl:]"'"'"'`')
-  if [[ ${#api_key} -lt 20 || ! "$api_key" =~ ^[[:graph:]]+$ ]]; then
-    echo "✘ No se ha recibido una clave válida (${#api_key} caracteres útiles de ${#raw_key} recibidos)." >&2
-    echo "  Vuelve a ejecutar el script, o edita .env y pon la clave tras GEMINI_API_KEY= (sin espacios ni comillas)." >&2
-    exit 1
-  fi
-  set_value GEMINI_API_KEY "$api_key"
-  changed=true
+  missing_key=true
 fi
 
 if $created; then
-  echo "✔ .env creado. Siguiente paso (la primera vez tarda unos minutos):"
-  echo "  docker compose up -d --build"
+  echo "✔ .env creado."
 elif $changed; then
-  echo "✔ .env completado (el resto se conserva). Arranca la aplicación con:"
-  echo "  docker compose up -d --build"
+  echo "✔ .env completado (el resto se conserva)."
+fi
+
+if $missing_key; then
+  echo
+  echo "Falta tu clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey"
+  echo "  1. Abre $(pwd)/.env con un editor."
+  echo "  2. Pega la clave tras GEMINI_API_KEY= (sin espacios ni comillas) y guarda."
+  echo "  3. Arranca la aplicación:  docker compose up -d --build"
 else
-  echo "✔ .env ya está configurado: no se modifica (tu clave se conserva)."
-  echo "  Arranca la aplicación con:  docker compose up -d"
+  echo "✔ Todo configurado. Arranca la aplicación con:  docker compose up -d --build"
 fi

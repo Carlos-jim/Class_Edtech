@@ -61,9 +61,10 @@ Necesitas una **clave de Google Gemini** (gratuita, sin tarjeta): https://aistud
 
 ### Primera vez (solo una vez)
 
-**1. Crear la configuración (`.env`).** El script crea `.env`, genera el secreto JWT y pide la clave de Gemini.
-Si `.env` ya existe solo completa lo que falte (p. ej. una clave vacía) y **conserva el resto**, así que ejecutarlo de
-nuevo es seguro.
+**1. Crear la configuración (`.env`).** El script crea `.env` y genera el secreto JWT. **No pide la clave**: si falta,
+te indica dónde pegarla (en Windows abre `.env` en el Bloc de notas). Pega tu clave de Gemini tras `GEMINI_API_KEY=`,
+sin espacios ni comillas, y guarda. Si `.env` ya existe solo completa lo que falte y **conserva el resto**, así que
+ejecutarlo de nuevo es seguro.
 
 ```bash
 ./scripts/setup.sh                                          # Linux / macOS
@@ -101,8 +102,8 @@ sobrescribiría tu clave). Solo tienes que arrancar:
 | Empezar de cero (**borra** conversaciones y BD) | `docker compose down -v` |
 
 **`dependency failed to start: container lms-tutor-backend-1 is unhealthy`**: mira el motivo con
-`docker compose logs backend --tail 60`. Si dice `requiere GEMINI_API_KEY`, la clave de `.env` está vacía: ejecuta de
-nuevo el script del paso 1 (la pide y conserva lo demás) y después `docker compose up -d`.
+`docker compose logs backend --tail 60`. Si dice `requiere GEMINI_API_KEY`, la clave de `.env` está vacía: pégala tras
+`GEMINI_API_KEY=` en `.env` (o ejecuta de nuevo el script del paso 1, que lo abre) y después `docker compose up -d`.
 
 > En Windows y macOS, abre Docker Desktop antes de ejecutar estos comandos.
 

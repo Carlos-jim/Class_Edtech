@@ -1,4 +1,5 @@
-﻿# Configuración inicial: crea .env a partir de .env.example y completa lo que falte (secreto JWT y clave de Gemini).
+﻿# Configuración inicial: crea .env a partir de .env.example y genera el secreto JWT. No pide la clave de Gemini:
+# si falta, abre .env para pegarla.
 # Lo que ya está configurado no se toca: ejecutarlo de nuevo es seguro.
 #
 # Uso (PowerShell, desde la raíz del repositorio):
@@ -45,26 +46,7 @@ if (-not (Get-EnvValue 'JWT_SECRET')) {
 }
 
 $provider = Get-EnvValue 'LLM_PROVIDER'
-if ((-not $provider -or $provider -eq 'gemini') -and -not (Get-EnvValue 'GEMINI_API_KEY')) {
-    Write-Host 'Falta la clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey'
-    $secure = Read-Host 'Pega tu clave (no se muestra al escribir)' -AsSecureString
-    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-    try {
-        $raw = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-    } finally {
-        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    }
-    # Al pegar en la consola pueden colarse caracteres de control (Ctrl+V), espacios o comillas: se quitan.
-    $apiKey = ($raw -replace '[\x00-\x20\x7F"''`]', '')
-    if ($apiKey.Length -lt 20 -or $apiKey -notmatch '^[\x21-\x7E]+$') {
-        Write-Host "✘ No se ha recibido una clave válida ($($apiKey.Length) caracteres útiles de $($raw.Length) recibidos)." -ForegroundColor Red
-        Write-Host '  Si al pegar no aparece nada, pega con clic derecho (o Ctrl+Mayús+V) en lugar de Ctrl+V,'
-        Write-Host '  o edita .env con el Bloc de notas y pon la clave tras GEMINI_API_KEY= (sin espacios ni comillas).'
-        exit 1
-    }
-    Set-EnvValue 'GEMINI_API_KEY' $apiKey
-    $changed = $true
-}
+$missingKey = (-not $provider -or $provider -eq 'gemini') -and -not (Get-EnvValue 'GEMINI_API_KEY')
 
 if ($created -or $changed) {
     # UTF-8 sin BOM: docker compose no admite el BOM al principio del fichero.
@@ -72,12 +54,18 @@ if ($created -or $changed) {
 }
 
 if ($created) {
-    Write-Host '✔ .env creado. Siguiente paso (la primera vez tarda unos minutos):' -ForegroundColor Green
-    Write-Host '  docker compose up -d --build'
+    Write-Host '✔ .env creado.' -ForegroundColor Green
 } elseif ($changed) {
-    Write-Host '✔ .env completado (el resto se conserva). Arranca la aplicación con:' -ForegroundColor Green
-    Write-Host '  docker compose up -d --build'
+    Write-Host '✔ .env completado (el resto se conserva).' -ForegroundColor Green
+}
+
+if ($missingKey) {
+    Write-Host ''
+    Write-Host 'Falta tu clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey' -ForegroundColor Yellow
+    Write-Host "  1. Abre $envPath (se intenta abrir solo en el Bloc de notas)."
+    Write-Host '  2. Pega la clave tras GEMINI_API_KEY= (sin espacios ni comillas) y guarda.'
+    Write-Host '  3. Arranca la aplicación:  docker compose up -d --build'
+    try { Start-Process notepad.exe -ArgumentList "`"$envPath`"" } catch { }
 } else {
-    Write-Host '✔ .env ya está configurado: no se modifica (tu clave se conserva).' -ForegroundColor Green
-    Write-Host '  Arranca la aplicación con:  docker compose up -d'
+    Write-Host '✔ Todo configurado. Arranca la aplicación con:  docker compose up -d --build' -ForegroundColor Green
 }
