@@ -6,7 +6,7 @@ Un alumno autorizado abre una lección y pregunta a un tutor de IA **por texto o
 contenido de la lección (o avisa de que no tiene información suficiente), la respuesta **se puede escuchar** y la
 conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la lección ni los mensajes de nadie.
 
-**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Google Gemini (chat + voz) · Groq / Mistral opcionales · Docker
+**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Google Gemini (chat + voz) · Piper (lectura en voz alta) · Docker
 
 <a id="tiempos-de-respuesta"></a>
 
@@ -19,7 +19,7 @@ conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la l
 > - En picos de demanda: **15–20 s**, o un aviso con *Reintentar*.
 >
 > La aplicación lo mitiga pidiendo la respuesta a varios modelos de Gemini en relevo y avisando cuando algo tarda.
-> Con un plan de pago, o con un proveedor más rápido como Cerebras (pide tarjeta), las esperas bajarían.
+> Con un plan de pago de Gemini las esperas bajarían.
 
 | Documento | Contenido |
 |---|---|
@@ -70,7 +70,7 @@ Verifica la instalación con `docker run --rm hello-world`.
 ## 1. Puesta en marcha
 
 Necesitas una **clave de Google Gemini** (gratuita, sin tarjeta): https://aistudio.google.com/apikey
-(alternativas: ver la [sección 3](#3-proveedor-de-ia)).
+(detalles en la [sección 3](#3-proveedor-de-ia)).
 
 ### Primera vez (solo una vez)
 
@@ -129,7 +129,7 @@ Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a l
 | `ana.garcia@demo.edtech` | `Demo1234!` | Matriculada en *Fundamentos de APIs REST* (2 lecciones) |
 | `bruno.lopez@demo.edtech` | `Demo1234!` | Sin acceso al curso |
 
-El tutor y la transcripción de voz usan **Google Gemini** por defecto. Si falta la clave del proveedor elegido, el
+El tutor y la transcripción de voz usan **Google Gemini**. Si falta la clave, el
 backend no arranca y explica cuál falta y dónde conseguirla (`docker compose logs backend`). Más detalles en la
 [sección 3](#3-proveedor-de-ia).
 
@@ -156,35 +156,43 @@ datos a terceros. Tarda ~2 s la primera vez por respuesta y queda en caché. Se 
 
 ## 3. Proveedor de IA
 
-El tutor (chat) y la voz (transcripción) usan un proveedor con **API compatible con OpenAI**, detrás de los mismos
-adaptadores: **cambiar de proveedor es solo editar `.env`**.
+El tutor (chat) y la transcripción de voz usan **Google Gemini**, en su plan gratuito (sin tarjeta).
 
-| `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) | Notas |
-|---|---|---|---|---|
-| `gemini` (por defecto) | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | `gemini-3.5-flash-lite` · el mismo | Gratuito, sin tarjeta. La voz se transcribe enviando el audio (WAV) por el chat |
-| `cerebras` | `CEREBRAS_API_KEY` | https://cloud.cerebras.ai | `gpt-oss-120b` · — (no transcribe) | Muy rápido para el chat, pero **pide vincular una tarjeta**: no se usa por defecto. Combinable con `STT_PROVIDER=gemini` |
-| `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` | Gratuito, pero **bloquea algunas redes/regiones** (403 *Access denied*) |
-| `mistral` | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` | Desde oct-2026 su plan gratuito **no permite claves de API** |
+| Qué | Valor |
+|---|---|
+| Clave | `GEMINI_API_KEY` en `.env` · se crea en https://aistudio.google.com/apikey |
+| Modelos | `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-flash-lite-latest` (los mismos para chat y voz) |
+| Voz | El navegador convierte cada grabación a **WAV 16 kHz mono** (≈ 1,9 MB por minuto) y el backend la envía a Gemini junto con el vocabulario de la lección |
+| Dónde vive la clave | Solo en el backend (nunca llega al navegador ni aparece en los logs) |
 
-1. Crea la clave y ponla en `.env` (el [script de configuración inicial](#primera-vez-solo-una-vez) lo hace para
-   Gemini).
-2. Elige proveedor con `LLM_PROVIDER`; la voz usa el mismo salvo que indiques `STT_PROVIDER` (se pueden mezclar).
-3. `docker compose up -d` (recrea el backend con la nueva configuración).
-
-**Relevo entre modelos.** `GEMINI_MODEL` y `GEMINI_TRANSCRIPTION_MODEL` admiten varios modelos separados por comas
-(por defecto, tres *lite*): si el primero no responde en 2 s se pide también al siguiente, y gana el primero que llega.
-Cada modelo tiene su propia cola en el plan gratuito, así que recorta mucho las esperas: en una prueba real de 6
-preguntas, con relevo todas respondieron en 5–10 s; con un solo modelo, 2 tardaron 25–31 s y las otras 4 fallaron. Si
-una respuesta tarda más de 8 s, la interfaz lo indica.
-
-Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `CEREBRAS_MODEL`, `GROQ_MODEL`, etc. Las claves solo viven en el
-backend. El navegador convierte cada grabación a **WAV 16 kHz mono** antes de subirla (≈ 1,9 MB por minuto): es el
-formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
+**Relevo entre modelos.** El backend pide la respuesta al primer modelo y, si no responde en 2 s, también al
+siguiente; gana el primero que llega. Cada modelo tiene su propia cola en el plan gratuito, así que recorta mucho las
+esperas: en una prueba real de 6 preguntas, con relevo todas respondieron en 5–10 s; con un solo modelo, 2 tardaron
+25–31 s y las otras 4 fallaron. Si una respuesta tarda más de 8 s, la interfaz lo indica. La lista se cambia con
+`GEMINI_MODEL` y `GEMINI_TRANSCRIPTION_MODEL` (modelos separados por comas).
 
 > **Tiempos de respuesta:** ver el [aviso del inicio](#tiempos-de-respuesta) sobre el plan gratuito de Gemini.
 
 > En el plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos: no envíes datos
 > personales. Si ves 503 *high demand*, es un pico temporal de Google: el backend reintenta y la UI ofrece *Reintentar*.
+
+<details>
+<summary>Otros proveedores (opcional, no se usan por defecto)</summary>
+
+La IA está detrás de puertos y adaptadores con API compatible con OpenAI, así que el proveedor se cambia **editando
+solo `.env`**, sin tocar código: `LLM_PROVIDER` para el tutor y `STT_PROVIDER` para la voz (por defecto, el mismo).
+Estos adaptadores existen y tienen tests, pero ninguno cumple hoy la condición de la POC (gratuito y sin tarjeta) desde
+la red del desarrollador:
+
+| `LLM_PROVIDER` | Clave en `.env` | Modelos (chat · voz) | Por qué no es el predeterminado |
+|---|---|---|---|
+| `cerebras` | `CEREBRAS_API_KEY` | `gpt-oss-120b` · — (no transcribe: usar con `STT_PROVIDER=gemini`) | Muy rápido, pero **pide vincular una tarjeta** |
+| `groq` | `GROQ_API_KEY` | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` | **Bloquea algunas redes/regiones** (403 *Access denied*) |
+| `mistral` | `MISTRAL_API_KEY` | `mistral-small-latest` · `voxtral-mini-latest` | Desde oct-2026 su plan gratuito **no permite claves de API** |
+
+Tras editar `.env`, `docker compose up -d` recrea el backend con la nueva configuración. Si falta la clave del
+proveedor elegido, el backend no arranca y dice cuál falta.
+</details>
 
 > Existe un proveedor simulado (`LLM_PROVIDER=mock`) **solo para los tests automáticos y la CI**: respuestas
 > deterministas, sin red ni cuota. No está pensado para usar la aplicación.
@@ -262,8 +270,8 @@ Firefox y WebKit.
 ┌────────────────────────┐   /      ┌──────────┐   /api   ┌──────────────────────────────┐
 │ Login · Mis cursos     │◀────────▶│ SPA + CSP│◀────────▶│ auth      JWT, rate limit    │
 │ Lección + Tutor        │          └──────────┘          │ catalog   AccessPolicy       │
-│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Gemini / Groq / Mistral / mock
-│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Gemini / Whisper / Voxtral / mock
+│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Gemini (mock en tests)
+│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Gemini (mock en tests)
 │  · speechSynthesis TTS │                                │ speech    SpeechSynthesisPort ── Piper (local, en la imagen)
 │    (o audio de Piper)  │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
 └────────────────────────┘                                └──────────────────────────────┘
