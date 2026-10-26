@@ -19,7 +19,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 |---|---|---|
 | Ports & Adapters | `LlmPort`, `TranscriptionPort` | El dominio no depende del proveedor; el mock permite tests y CI deterministas, sin claves |
 | Strategy + Factory | `LlmConfig`, `SpeechConfig`, `AiProviders` | Elegir proveedor por configuración (`gemini` / `groq` / `mistral` / `mock`) y fallar al arrancar si falta la clave |
-| Adapter | `OpenAiCompatibleLlmAdapter`, `OpenAiCompatibleTranscriptionAdapter`, `ChatAudioTranscriptionAdapter`; `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
+| Adapter | `OpenAiCompatibleLlmAdapter`, `OpenAiCompatibleTranscriptionAdapter`, `ChatAudioTranscriptionAdapter`, `PiperSynthesisAdapter`; `AudioRecorder`, `SpeechPlayer`, `AnswerAudioPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
 | Decorator | `ResilientLlmPort` | Añadir retry y circuit breaker a cualquier `LlmPort` sin modificarlo |
 | Facade / Application Service | `TutorService` | Un único punto que orquesta acceso → contexto → IA → persistencia |
 | Builder | `PromptBuilder` | Construir el prompt con la lección delimitada y defensas frente a inyección |
@@ -106,7 +106,7 @@ mensajes como contexto.
 |---|---|---|
 | Grabar con `MediaRecorder` y transcribir en el backend (Whisper) | Web Speech API (`SpeechRecognition`) | Funciona en Chrome, Firefox, Edge y Safari; calidad de Whisper; la clave del proveedor no sale del servidor |
 | Paso de **revisión editable** antes de enviar | Enviar la transcripción directamente | Las transcripciones fallan; el alumno controla lo que pregunta y se respeta "se transcribe antes de enviarse" |
-| TTS con `speechSynthesis` del navegador | TTS en la nube | Gratuito, sin latencia de red ni datos a terceros; suficiente para una POC |
+| TTS con `speechSynthesis` del navegador y, si no tiene voz en español o no suena, Piper en el backend | TTS en la nube; solo el navegador | Gratuito y sin datos a terceros en ambos casos. El navegador es instantáneo; Piper (MIT, voz CC0, ~2 s por respuesta, en caché) garantiza que *Escuchar* funcione también en Linux/Opera sin voces. Se descartaron los TTS en la nube: piden tarjeta o tienen cuotas |
 | Leer en voz alta automáticamente solo si la pregunta fue por voz | Siempre / nunca | Conversación natural por voz sin molestar a quien escribe; botón *Escuchar* siempre disponible |
 
 **Contexto de la lección para transcribir.** Sin contexto, el modelo elige ante un sonido dudoso la palabra más
@@ -122,6 +122,13 @@ Detalles: formato elegido según el navegador (webm/opus o mp4 en Safari) y dura
 backend valida el **formato real por su firma binaria** (no el `Content-Type`), limita a 5 MB y descarta alucinaciones
 conocidas de Whisper con silencio («Subtítulos realizados por la comunidad de Amara.org»). Si la transcripción falla
 por el servicio o la red, se reintenta con **la misma grabación** (se guarda en memoria). El audio no se almacena.
+
+**Lectura en voz alta con Piper.** `GET /api/lessons/{lessonId}/messages/{messageId}/audio` devuelve la respuesta en
+WAV. Solo sirve respuestas del tutor de la conversación del propio alumno (cualquier otro caso, 404, como el resto de
+la API). Piper se ejecuta como proceso **sin shell** (el texto entra por la entrada estándar: no hay inyección de
+comandos posible), con tiempo máximo de 20 s y como mucho 2 síntesis a la vez. El binario y la voz se descargan al
+construir la imagen con su **SHA-256 fijado**. Fuera de Docker (desarrollo) Piper no está instalado: el endpoint
+responde 503 y el panel avisa, sin impedir arrancar.
 
 ## 5. Seguridad
 
@@ -175,9 +182,11 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
   plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos). El circuit breaker y los
   mensajes de error lo cubren y se cambia de proveedor desde `.env`, pero no hay conmutación automática a otro
   proveedor.
-- **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. Si no hay ninguna (Linux sin
-  `speech-dispatcher`, navegadores Flatpak sin acceso a él) la Web Speech API no da error: simplemente no suena. Se
-  detecta con un temporizador (si no empieza a sonar en 3 s) y se avisa al alumno; no hay TTS en servidor de respaldo. En modo mock la transcripción
+- **Voz**: si el navegador no tiene voz en español se usa Piper en el backend. Si tiene voces pero no suenan (la Web
+  Speech API no da error, simplemente calla), se detecta con un temporizador de 3 s y se pasa a Piper, así que en ese
+  caso la lectura empieza unos segundos tarde. Piper usa CPU del servidor (limitado a 2 síntesis simultáneas, caché de
+  30 respuestas en memoria) y el WAV no se comprime (~1,5 MB por respuesta larga): en producción convendría Opus/MP3
+  y una caché compartida. Solo hay una voz (español de España). En modo mock la transcripción
   devuelve siempre la misma frase. La voz se prueba en Chromium y Firefox con micrófono simulado; en WebKit (Safari) solo el recorrido de texto, porque Playwright no simula el micrófono en ese motor.
 - **Respuestas sin streaming**: la respuesta llega completa (indicador "pensando"); con streaming (SSE) se percibiría
   más rápida.

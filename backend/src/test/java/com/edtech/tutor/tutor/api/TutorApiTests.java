@@ -11,11 +11,14 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.edtech.tutor.IntegrationTest;
 import com.edtech.tutor.TestTokens;
+import com.jayway.jsonpath.JsonPath;
 import com.edtech.tutor.tutor.infra.MockLlmAdapter;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -172,6 +175,33 @@ class TutorApiTests {
                 .andExpect(jsonPath("$.question.content").value(payload));
     }
 
+    // --- Respuesta en voz alta (texto a voz en el servidor) ------------------------------------
+
+    @Test
+    void ownAnswerCanBeListenedToAsWav() throws Exception {
+        var answerId = askAndGetAnswerId(ANA, LESSON_2, "¿Para qué sirve POST?");
+
+        var wav = audio(ANA, LESSON_2, answerId)
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("audio/wav"))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("private")))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(new String(wav, 0, 4)).isEqualTo("RIFF");
+    }
+
+    @Test
+    void answersOfOtherStudentsLessonsOrQuestionsCannotBeListenedTo() throws Exception {
+        var body = ask(ANA, LESSON_2, "¿Para qué sirve POST?", "TEXT").andReturn().getResponse().getContentAsString();
+        var answerId = UUID.fromString(JsonPath.read(body, "$.answer.id"));
+        var questionId = UUID.fromString(JsonPath.read(body, "$.question.id"));
+
+        audio(CARLA, LESSON_2, answerId).andExpect(status().isNotFound());   // misma lección, otra alumna
+        audio(BRUNO, LESSON_2, answerId).andExpect(status().isNotFound());   // sin acceso al curso
+        audio(ANA, LESSON_1, answerId).andExpect(status().isNotFound());     // otra lección
+        audio(ANA, LESSON_2, questionId).andExpect(status().isNotFound());   // no es una respuesta del tutor
+        audio(ANA, LESSON_2, UUID.randomUUID()).andExpect(status().isNotFound());
+    }
+
     // --- helpers -----------------------------------------------------------------------------
 
     private ResultActions ask(UUID studentId, UUID lessonId, String content, String inputMode) throws Exception {
@@ -185,6 +215,17 @@ class TutorApiTests {
 
     private ResultActions history(UUID studentId, UUID lessonId) throws Exception {
         return mvc.perform(get("/api/lessons/{id}/messages", lessonId)
+                .header(HttpHeaders.AUTHORIZATION, TestTokens.bearer(jwtEncoder, studentId)));
+    }
+
+    private UUID askAndGetAnswerId(UUID studentId, UUID lessonId, String question) throws Exception {
+        var body = ask(studentId, lessonId, question, "TEXT").andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return UUID.fromString(JsonPath.read(body, "$.answer.id"));
+    }
+
+    private ResultActions audio(UUID studentId, UUID lessonId, UUID messageId) throws Exception {
+        return mvc.perform(get("/api/lessons/{lessonId}/messages/{messageId}/audio", lessonId, messageId)
                 .header(HttpHeaders.AUTHORIZATION, TestTokens.bearer(jwtEncoder, studentId)));
     }
 

@@ -17,6 +17,7 @@ public enum ErrorCode {
     AUDIO_TOO_LARGE(HttpStatus.valueOf(413), "La grabación es demasiado larga. Graba una pregunta más breve"),
     NO_SPEECH_DETECTED(HttpStatus.valueOf(422), "No se ha detectado voz en la grabación. Inténtalo de nuevo o escribe tu pregunta"),
     TRANSCRIPTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "No se pudo transcribir el audio. Inténtalo de nuevo o escribe tu pregunta"),
+    SPEECH_SYNTHESIS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "No se pudo generar el audio de la respuesta. Puedes leerla por escrito"),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Has hecho demasiadas peticiones seguidas. Espera un momento y vuelve a intentarlo"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno. Inténtalo de nuevo más tarde");
 

@@ -42,6 +42,8 @@ services:
       # Proveedor de IA (gemini | groq | mistral). Si falta la clave del elegido, el backend no arranca y explica cuál.
       LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
       STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-gemini}}
+      # Texto a voz local (Piper, incluido en la imagen) para navegadores sin voces en español. none = desactivado
+      TTS_ENGINE: ${TTS_ENGINE:-piper}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       # Varios modelos separados por comas = relevo (gana el primero que responde)
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}

@@ -22,8 +22,20 @@ export class SpeechPlayer {
 
   private startWatchdog?: ReturnType<typeof setTimeout>;
 
+  constructor() {
+    // Chrome carga las voces de forma asíncrona: pedirlas pronto hace que estén listas al pulsar «Escuchar».
+    if (this.isSupported) {
+      window.speechSynthesis.getVoices();
+    }
+  }
+
   get isSupported(): boolean {
     return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+  }
+
+  /** El navegador tiene una voz en español. Si no (Linux sin voces, Opera...), se usa el audio del servidor. */
+  canSpeakSpanish(): boolean {
+    return this.isSupported && pickSpanishVoice(window.speechSynthesis.getVoices()) !== undefined;
   }
 
   speak(id: string, text: string): boolean {

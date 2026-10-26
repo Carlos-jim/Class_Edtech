@@ -42,7 +42,7 @@ Como Ana, en *Métodos HTTP*:
 1. Pulsar el micrófono → barra *Escuchando…* con temporizador y nivel.
 2. Preguntar en voz alta «¿Qué diferencia hay entre PUT y PATCH?» → *Detener*.
 3. *Transcribiendo…* → el texto aparece **editable**: corregir algo y pulsar Intro.
-4. La respuesta se lee en voz alta; enseñar *Escuchar/Detener* en otra respuesta.
+4. La respuesta se lee en voz alta; enseñar *Escuchar/Detener* en otra respuesta (en un navegador sin voces, como Opera en Linux, suena el audio generado por Piper en el backend).
 
 ## 5. Continuidad — requisito 05 (0,5 min)
 

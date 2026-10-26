@@ -9,6 +9,7 @@ import com.edtech.tutor.tutor.domain.LlmPort;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.Message;
 import com.edtech.tutor.tutor.domain.MessageRepository;
+import com.edtech.tutor.tutor.domain.MessageRole;
 import com.edtech.tutor.tutor.domain.TutorAnswer;
 import java.util.List;
 import java.util.UUID;
@@ -64,6 +65,20 @@ public class TutorService {
             return conversations.findByStudentIdAndLessonId(studentId, lessonId)
                     .map(conversation -> messages.findByConversationIdOrderBySeqAsc(conversation.getId()))
                     .orElse(List.of());
+        });
+    }
+
+    /**
+     * Respuesta del tutor en la conversación del alumno. Si el mensaje es de otro alumno, de otra lección o no es una
+     * respuesta del tutor, 404 (igual que si no existiera: no se revela nada).
+     */
+    public Message tutorMessage(UUID studentId, UUID lessonId, UUID messageId) {
+        return readTx.execute(status -> {
+            accessPolicy.requireLesson(studentId, lessonId);
+            return conversations.findByStudentIdAndLessonId(studentId, lessonId)
+                    .flatMap(conversation -> messages.findByIdAndConversationId(messageId, conversation.getId()))
+                    .filter(message -> message.getRole() == MessageRole.TUTOR)
+                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
         });
     }
 

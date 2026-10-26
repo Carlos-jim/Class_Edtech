@@ -129,9 +129,11 @@ backend no arranca y explica cuál falta y dónde conseguirla (`docker compose l
 | 05 | **Continuidad** | Recarga la página, o cierra sesión y vuelve a entrar: la conversación de cada lección sigue ahí (es por alumno y por lección). |
 | 06 | **Estados y errores** | El panel muestra *Escuchando…*, *Transcribiendo…*, *El tutor está pensando…*, *Reproduciendo respuesta…*. Para ver la recuperación: desconecta la red (DevTools → *Network* → *Offline*) y envía una pregunta (se conserva y aparece *Reintentar*); o deniega el permiso del micrófono (*Escribir en su lugar*). |
 
-La lectura en voz alta usa las voces del navegador (`speechSynthesis`). Si el navegador no tiene ninguna —en Linux
-hace falta `speech-dispatcher`, y los navegadores Flatpak (p. ej. Opera) no lo ven— el panel lo avisa con *Reintentar*
-en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
+La lectura en voz alta usa la voz en español del navegador (`speechSynthesis`) si la tiene: es instantánea y no usa
+red. Si no la tiene —Linux sin `speech-dispatcher`, Opera, navegadores Flatpak o con la síntesis desactivada— o se
+queda en silencio, la respuesta se lee con audio generado **en el propio backend** con [Piper](https://github.com/rhasspy/piper)
+(motor neuronal local, MIT; voz `es_ES-davefx`, CC0), incluido en la imagen Docker: sin claves, sin coste y sin enviar
+datos a terceros. Tarda ~2 s la primera vez por respuesta y queda en caché. Se desactiva con `TTS_ENGINE=none`.
 
 ## 3. Proveedor de IA
 
@@ -224,7 +226,7 @@ proveedor, espera y pulsa *Reintentar* como haría un alumno.
 | **E2E · recorrido y acceso** | Requisitos 01–06, login con `returnUrl`, cierre de sesión, Bruno sin acceso, **IDOR**, sin token, navegación anterior/siguiente con historial por lección, **solo teclado** |
 | **E2E · tutor** | Respuesta basada en la lección, fuera de temario, historial al volver, sugerencias, fallo de IA y reintento, sin conexión, **429**, **XSS**, validación (vacía, límite de 2000) |
 | **E2E · sesión** | **Token caducado en el servidor** (firmado como el backend) → login → vuelta a la lección; caducidad a mitad de una pregunta sin perder la conversación |
-| **E2E · voz** | Grabar → revisar → enviar → escuchar; cancelar; micrófono denegado; **subida en WAV 16 kHz mono**; sin voz (422) → *Grabar de nuevo*; audio demasiado grande (413); **corte automático a los 60 s**; reintento con la misma grabación; navegador sin voces |
+| **E2E · voz** | Grabar → revisar → enviar → escuchar; cancelar; micrófono denegado; **subida en WAV 16 kHz mono**; sin voz (422) → *Grabar de nuevo*; audio demasiado grande (413); **corte automático a los 60 s**; reintento con la misma grabación; **sin voces en el navegador → audio del servidor (Piper)**, y aviso con *Reintentar* si también falla |
 | **E2E · navegadores y accesibilidad** | Recorrido y voz en **Firefox**; recorrido en **WebKit** (Safari); móvil; **WCAG 2.1 AA (axe-core)** |
 | **E2E · IA real** (`e2e:live`) | Gemini: cita verificada, *Sin información suficiente*, pregunta hablada real transcrita y respondida |
 
@@ -241,7 +243,8 @@ Firefox y WebKit.
 │ Lección + Tutor        │          └──────────┘          │ catalog   AccessPolicy       │
 │  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Gemini / Groq / Mistral / mock
 │  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Gemini / Whisper / Voxtral / mock
-│  · speechSynthesis TTS │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
+│  · speechSynthesis TTS │                                │ speech    SpeechSynthesisPort ── Piper (local, en la imagen)
+│    (o audio de Piper)  │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
 └────────────────────────┘                                └──────────────────────────────┘
 ```
 

@@ -20,3 +20,5 @@ tutor:
 
 speech:
   provider: mock
+  tts:
+    engine: mock

@@ -1,4 +1,4 @@
-import { LESSON_2, expect, resetConversations, stubSpeechSynthesis, test } from './fixtures';
+import { LESSON_2, expect, playedAudios, recordAudioPlayback, resetConversations, stubSpeechSynthesis, test } from './fixtures';
 
 test.describe('Interacción por voz', () => {
   test.beforeEach(async ({ page, signInAs }) => {
@@ -92,22 +92,70 @@ test.describe('Interacción por voz', () => {
   });
 });
 
+/** Las respuestas se leen con el audio que genera el servidor (Piper) cuando el navegador no puede hacerlo. */
+const isAnswerAudio = (url: string) => /\/api\/lessons\/[^/]+\/messages\/[^/]+\/audio$/.test(url);
+
 test.describe('Lectura en voz alta sin voces en el navegador', () => {
   test.beforeEach(async ({ page, signInAs }) => {
     resetConversations();
-    await stubSpeechSynthesis(page, { silent: true });
+    await recordAudioPlayback(page);
     await signInAs('ana');
   });
 
-  test('si no llega a sonar se avisa en lugar de quedarse en silencio', async ({ page, lessonPage }) => {
+  test('sin voces en español (Linux, Opera) «Escuchar» reproduce el audio del servidor', { tag: '@cross' }, async ({
+    page,
+    lessonPage,
+  }) => {
+    await stubSpeechSynthesis(page, { voices: false });
     await lessonPage.goto(LESSON_2);
-    await lessonPage.ask('¿Para qué sirve POST?');
-    await expect(lessonPage.tutorMessages).toHaveCount(1);
+    await lessonPage.askAndAwait('¿Para qué sirve POST?', 1);
+
+    const audio = page.waitForResponse((response) => isAnswerAudio(response.url()));
+    await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
+
+    const response = await audio;
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toContain('audio/wav');
+    await expect.poll(() => playedAudios(page)).toHaveLength(1);
+    await expect(lessonPage.error).toHaveCount(0);
+  });
+
+  test('si la voz del navegador no llega a sonar se usa el audio del servidor', async ({ page, lessonPage }) => {
+    await stubSpeechSynthesis(page, { silent: true });
+    await lessonPage.goto(LESSON_2);
+    await lessonPage.askAndAwait('¿Para qué sirve POST?', 1);
+
+    const audio = page.waitForResponse((response) => isAnswerAudio(response.url()));
+    await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
+
+    expect((await audio).status()).toBe(200);
+    await expect.poll(() => playedAudios(page)).toHaveLength(1);
+    await expect(lessonPage.error).toHaveCount(0);
+  });
+
+  test('si tampoco hay audio del servidor se avisa y se puede reintentar', async ({ page, lessonPage }) => {
+    await stubSpeechSynthesis(page, { voices: false });
+    let attempts = 0;
+    await page.route(/\/messages\/[^/]+\/audio$/, (route) => {
+      attempts++;
+      return attempts === 1
+        ? route.fulfill({
+            status: 503,
+            contentType: 'application/problem+json',
+            body: JSON.stringify({ code: 'SPEECH_SYNTHESIS_UNAVAILABLE', detail: 'No se pudo generar el audio' }),
+          })
+        : route.continue();
+    });
+    await lessonPage.goto(LESSON_2);
+    await lessonPage.askAndAwait('¿Para qué sirve POST?', 1);
 
     await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
 
-    await expect(lessonPage.error).toContainText('no ha podido leer la respuesta en voz alta');
-    await expect(page.getByRole('button', { name: 'Escuchar respuesta' })).toBeVisible();
+    await expect(lessonPage.error).toContainText('No se ha podido leer la respuesta en voz alta');
+    await expect(lessonPage.answer(0)).toContainText('crear un nuevo recurso');
+    await lessonPage.error.getByRole('button', { name: 'Reintentar' }).click();
+    await expect(lessonPage.error).toHaveCount(0);
+    await expect.poll(() => playedAudios(page)).toHaveLength(1);
   });
 });
 
@@ -119,19 +167,20 @@ test.describe('Navegador sin síntesis de voz', () => {
       delete (Window.prototype as unknown as { speechSynthesis?: unknown }).speechSynthesis;
       delete (window as unknown as { speechSynthesis?: unknown }).speechSynthesis;
     });
+    await recordAudioPlayback(page);
     await signInAs('ana');
   });
 
-  test('el botón Escuchar sigue visible y explica por qué no puede leer la respuesta', async ({ page, lessonPage }) => {
+  test('«Escuchar» lee la respuesta con el audio generado en el servidor', async ({ page, lessonPage }) => {
     await lessonPage.goto(LESSON_2);
     expect(await page.evaluate(() => 'speechSynthesis' in window)).toBe(false);
 
     await lessonPage.askAndAwait('¿Para qué sirve POST?', 1);
+    const audio = page.waitForResponse((response) => isAnswerAudio(response.url()));
     await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
 
-    await expect(lessonPage.error).toContainText('Este navegador no permite leer respuestas en voz alta');
-    await lessonPage.error.getByRole('button', { name: 'Entendido' }).click();
+    expect((await audio).status()).toBe(200);
+    await expect.poll(() => playedAudios(page)).toHaveLength(1);
     await expect(lessonPage.error).toHaveCount(0);
-    await expect(lessonPage.answer(0)).toContainText('crear un nuevo recurso');
   });
 });

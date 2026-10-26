@@ -56,6 +56,14 @@ speech:
   # gemini | groq | mistral | mock (por defecto, el mismo proveedor que el tutor; cerebras no transcribe)
   provider: ${STT_PROVIDER:${LLM_PROVIDER:gemini}}
   max-audio-size: 5MB
+  tts:
+    # piper (en la imagen Docker) | none (desarrollo sin Piper: el navegador usa su propia voz) | mock (tests)
+    engine: ${TTS_ENGINE:none}
+    piper-binary: ${PIPER_BINARY:/opt/piper/piper}
+    piper-model: ${PIPER_MODEL:/opt/piper/voices/es_ES-davefx-medium.onnx}
+    timeout: 20s
+    max-concurrent: 2
+    cache-size: 30
 
 # Proveedores con API compatible con OpenAI (mismos adaptadores; se elige con LLM_PROVIDER / STT_PROVIDER).
 ai:

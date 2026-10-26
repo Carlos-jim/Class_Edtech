@@ -111,3 +111,25 @@ describe('splitIntoSentences', () => {
     expect(splitIntoSentences('Métodos:\n• GET lee.\n• POST crea.')).toEqual(['Métodos: GET lee. POST crea.']);
   });
 });
+
+describe('SpeechPlayer · voces disponibles', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function withVoices(voices: { lang: string }[]): SpeechPlayer {
+    vi.stubGlobal('speechSynthesis', { getVoices: () => voices, cancel: vi.fn() });
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
+    return TestBed.inject(SpeechPlayer);
+  }
+
+  it('can speak Spanish only if the browser has a Spanish voice', () => {
+    expect(withVoices([{ lang: 'en-US' }, { lang: 'es-ES' }]).canSpeakSpanish()).toBe(true);
+  });
+
+  it('without voices (Linux without speech-dispatcher, Opera) the server audio is needed', () => {
+    expect(withVoices([]).canSpeakSpanish()).toBe(false);
+  });
+
+  it('with only voices in other languages the server audio is needed', () => {
+    expect(withVoices([{ lang: 'en-US' }]).canSpeakSpanish()).toBe(false);
+  });
+});

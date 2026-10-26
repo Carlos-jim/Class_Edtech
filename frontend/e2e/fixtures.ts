@@ -106,25 +106,60 @@ async function apiLogin(baseURL: string, user: DemoUser): Promise<Session> {
  * Sustituye speechSynthesis por un doble que registra lo que se lee (headless no tiene voces) y emite "start"
  * como un navegador real. Con {@code silent} imita un navegador sin voces: acepta el texto pero nunca suena.
  */
-export async function stubSpeechSynthesis(page: Page, { silent = false } = {}): Promise<void> {
-  await page.addInitScript((silent) => {
-    const spoken: string[] = [];
-    (window as unknown as { __spoken: string[] }).__spoken = spoken;
-    Object.defineProperty(window, 'speechSynthesis', {
-      configurable: true,
-      value: {
-        speak: (utterance: SpeechSynthesisUtterance) => {
-          spoken.push(utterance.text);
-          if (!silent) {
-            setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
-          }
+/**
+ * Síntesis de voz simulada. Por defecto el navegador tiene una voz en español; `voices: false` simula Linux/Opera sin
+ * voces y `silent` un motor que acepta el texto pero nunca suena. Cada texto leído se guarda en `window.__spoken`.
+ */
+export async function stubSpeechSynthesis(page: Page, { silent = false, voices = true } = {}): Promise<void> {
+  await page.addInitScript(
+    ({ silent, voices }) => {
+      const spoken: string[] = [];
+      (window as unknown as { __spoken: string[] }).__spoken = spoken;
+      // El constructor real no admite voces simuladas: se sustituye por uno equivalente.
+      class FakeUtterance {
+        lang = '';
+        rate = 1;
+        voice: unknown = null;
+        onstart: ((event: Event) => void) | null = null;
+        onend: ((event: Event) => void) | null = null;
+        onerror: ((event: Event) => void) | null = null;
+        constructor(readonly text: string) {}
+      }
+      Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance });
+      Object.defineProperty(window, 'speechSynthesis', {
+        configurable: true,
+        value: {
+          speak: (utterance: FakeUtterance) => {
+            spoken.push(utterance.text);
+            if (!silent) {
+              setTimeout(() => utterance.onstart?.(new Event('start')), 0);
+            }
+          },
+          cancel: () => undefined,
+          resume: () => undefined,
+          getVoices: () => (voices ? [{ lang: 'es-ES', name: 'Voz de prueba', default: true, localService: true }] : []),
         },
-        cancel: () => undefined,
-        resume: () => undefined,
-        getVoices: () => [],
-      },
-    });
-  }, silent);
+      });
+    },
+    { silent, voices },
+  );
+}
+
+/** Registra los audios que la página reproduce (el audio de las respuestas generado en el servidor) en `window.__played`. */
+export async function recordAudioPlayback(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const played: string[] = [];
+    (window as unknown as { __played: string[] }).__played = played;
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      played.push(this.src);
+      return play.call(this);
+    };
+  });
+}
+
+export async function playedAudios(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as { __played: string[] }).__played);
 }
 
 export function resetConversations(): void {

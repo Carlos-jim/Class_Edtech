@@ -37,4 +37,12 @@ export class TutorApi {
   ask(lessonId: string, content: string, inputMode: InputMode): Observable<AskResponse> {
     return this.http.post<AskResponse>(`/api/lessons/${encodeURIComponent(lessonId)}/messages`, { content, inputMode });
   }
+
+  /** Respuesta del tutor leída en voz alta (WAV generado en el servidor), para navegadores sin voces. */
+  answerAudio(lessonId: string, messageId: string): Observable<Blob> {
+    return this.http.get(
+      `/api/lessons/${encodeURIComponent(lessonId)}/messages/${encodeURIComponent(messageId)}/audio`,
+      { responseType: 'blob' },
+    );
+  }
 }

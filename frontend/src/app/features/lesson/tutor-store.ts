@@ -4,6 +4,7 @@ import { ApiError, NETWORK_ERROR, toApiError } from '../../core/api/api-error';
 import { TranscriptionApi } from '../../core/api/transcription-api';
 import { ChatMessage, InputMode, MAX_QUESTION_LENGTH, TutorApi } from '../../core/api/tutor-api';
 import { AudioRecorder, MAX_RECORDING_SECONDS, MicrophoneError, MicrophoneErrorKind } from '../../core/voice/audio-recorder';
+import { AnswerAudioPlayer } from '../../core/voice/answer-audio-player';
 import { SpeechPlayer } from '../../core/voice/speech-player';
 
 /**
@@ -43,6 +44,8 @@ export class TutorStore {
   private readonly transcriptionApi = inject(TranscriptionApi);
   private readonly recorder = inject(AudioRecorder);
   private readonly speech = inject(SpeechPlayer);
+  /** Audio generado en el servidor: cuando el navegador no tiene voces en español o falla en silencio. */
+  private readonly serverVoice = inject(AnswerAudioPlayer);
 
   private lessonId: string | null = null;
   private historyRequest?: Subscription;
@@ -64,11 +67,10 @@ export class TutorStore {
   private slowTimer?: ReturnType<typeof setTimeout>;
 
   readonly microphoneSupported = this.recorder.isSupported;
-  readonly speechSupported = this.speech.isSupported;
   readonly recordingSeconds = this.recorder.elapsedSeconds;
   readonly recordingLevel = this.recorder.level;
   readonly maxRecordingSeconds = MAX_RECORDING_SECONDS;
-  readonly speakingId = this.speech.speakingId;
+  readonly speakingId = computed(() => this.speech.speakingId() ?? this.serverVoice.speakingId());
 
   readonly isBusy = computed(() => ['loading', 'sending', 'recording', 'transcribing'].includes(this.phase()));
   readonly draftLength = computed(() => this.draft().trim().length);
@@ -89,6 +91,9 @@ export class TutorStore {
       return SLOW_TEXT[this.phase()] ?? STATUS_TEXT[this.phase()];
     }
     const text = STATUS_TEXT[this.phase()];
+    if (!text && this.serverVoice.loading()) {
+      return 'Preparando el audio de la respuesta…';
+    }
     if (!text && this.speakingId()) {
       return 'Reproduciendo respuesta…';
     }
@@ -96,9 +101,17 @@ export class TutorStore {
   });
 
   constructor() {
-    // La síntesis de voz falla en silencio (navegador sin voces): se avisa en lugar de dejar al alumno esperando.
+    // La voz del navegador falla en silencio (sin voces instaladas): se lee con el audio del servidor.
     effect(() => {
-      if (this.speech.failure()) {
+      const failed = this.speech.failure();
+      if (failed && this.lessonId) {
+        const lessonId = this.lessonId;
+        untracked(() => this.serverVoice.play(lessonId, failed.id));
+      }
+    });
+    // Si tampoco hay audio del servidor, se avisa en lugar de dejar al alumno esperando.
+    effect(() => {
+      if (this.serverVoice.failure()) {
         untracked(() =>
           this.error.set({ kind: 'speech', code: 'SPEECH_UNAVAILABLE', message: SPEECH_UNAVAILABLE, actionLabel: 'Reintentar' }),
         );
@@ -109,7 +122,7 @@ export class TutorStore {
       this.sendRequest?.unsubscribe();
       this.transcriptionRequest?.unsubscribe();
       this.recorder.cancel();
-      this.speech.stop();
+      this.stopSpeech();
       clearTimeout(this.slowTimer);
     });
   }
@@ -122,7 +135,7 @@ export class TutorStore {
     this.sendRequest?.unsubscribe();
     this.transcriptionRequest?.unsubscribe();
     this.recorder.cancel();
-    this.speech.stop();
+    this.stopSpeech();
     this.phase.set('loading');
     this.messages.set([]);
     this.pending.set(null);
@@ -164,7 +177,7 @@ export class TutorStore {
     this.error.set(null);
     this.pending.set(question);
     this.draft.set('');
-    this.speech.stop();
+    this.stopSpeech();
 
     this.sendRequest = this.api.ask(this.lessonId, question.content, question.inputMode).subscribe({
       next: ({ question: saved, answer }) => {
@@ -174,11 +187,7 @@ export class TutorStore {
         this.transition('idle');
         // Conversación por voz: la respuesta se lee en voz alta (también hay botón para escucharla de nuevo).
         if (question.inputMode === 'VOICE') {
-          if (this.speechSupported) {
-            this.speech.speak(answer.id, answer.content);
-          } else {
-            this.warnSpeechUnsupported();
-          }
+          this.speak(answer);
         }
       },
       error: (error: unknown) => {
@@ -198,7 +207,7 @@ export class TutorStore {
     if (!this.canRecord()) {
       return;
     }
-    this.speech.stop(); // que el altavoz no se grabe a sí mismo
+    this.stopSpeech(); // que el altavoz no se grabe a sí mismo
     this.error.set(null);
     this.lastAudio = null;
     this.requestingMicrophone.set(true);
@@ -237,19 +246,32 @@ export class TutorStore {
   }
 
   toggleSpeech(message: ChatMessage): void {
-    if (!this.speechSupported) {
-      this.warnSpeechUnsupported();
+    if (this.speakingId() === message.id) {
+      this.stopSpeech();
       return;
     }
     if (this.error()?.kind === 'speech') {
       this.error.set(null);
     }
-    this.speech.toggle(message.id, message.content);
+    this.speak(message);
   }
 
-  /** Sin Web Speech API (desactivada en algunos Firefox/LibreWolf o navegadores Flatpak) no hay nada que reintentar. */
-  private warnSpeechUnsupported(): void {
-    this.error.set({ kind: 'speech', code: 'SPEECH_UNSUPPORTED', message: SPEECH_UNSUPPORTED, actionLabel: 'Entendido' });
+  /**
+   * Lee una respuesta: con la voz del navegador si tiene una en español (instantáneo, sin red) y, si no
+   * (Linux sin voces, Opera, Web Speech desactivada), con el audio que genera el servidor.
+   */
+  private speak(message: ChatMessage): void {
+    this.stopSpeech();
+    if (this.speech.canSpeakSpanish()) {
+      this.speech.speak(message.id, message.content);
+    } else if (this.lessonId) {
+      this.serverVoice.play(this.lessonId, message.id);
+    }
+  }
+
+  private stopSpeech(): void {
+    this.speech.stop();
+    this.serverVoice.stop();
   }
 
   private transcribe(audio: Blob): void {
@@ -290,9 +312,9 @@ export class TutorStore {
       }
     } else if (kind === 'speech') {
       this.error.set(null);
-      const failed = this.speech.failure();
-      if (failed) {
-        this.speech.speak(failed.id, failed.text);
+      const failed = this.serverVoice.failure();
+      if (failed && this.lessonId) {
+        this.serverVoice.play(this.lessonId, failed.id);
       }
     } else {
       this.error.set(null);
@@ -356,12 +378,7 @@ const STATUS_TEXT: Readonly<Record<TutorPhase, string>> = {
 };
 
 const SPEECH_UNAVAILABLE =
-  'Tu navegador no ha podido leer la respuesta en voz alta: no tiene voces de síntesis disponibles. ' +
-  'Prueba con Chrome, Edge o Firefox (en Linux necesitan speech-dispatcher). La respuesta sigue disponible por escrito.';
-
-const SPEECH_UNSUPPORTED =
-  'Este navegador no permite leer respuestas en voz alta (la síntesis de voz no está disponible o está desactivada). ' +
-  'Prueba con Chrome o Edge. La respuesta sigue disponible por escrito.';
+  'No se ha podido leer la respuesta en voz alta. Inténtalo de nuevo; la respuesta sigue disponible por escrito.';
 
 const MICROPHONE_MESSAGES: Readonly<Record<MicrophoneErrorKind, string>> = {
   'permission-denied':
