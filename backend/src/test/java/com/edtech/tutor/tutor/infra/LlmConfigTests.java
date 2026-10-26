@@ -30,6 +30,17 @@ class LlmConfigTests {
     }
 
     @Test
+    void severalChatModelsAreQueriedInRelayBehindTheCircuitBreaker() {
+        var relay = new AiProviders(new AiProvider("gemini", "Gemini", "GEMINI_API_KEY", "https://aistudio.google.com/apikey",
+                TranscriptionApi.CHAT_INPUT_AUDIO, new OpenAiCompatibleProperties("k", "https://ai.test/v1",
+                "modelo-a,modelo-b,modelo-c", "t", 0.2, 600, Duration.ofSeconds(3), Duration.ofSeconds(15))));
+
+        assertThat(LlmConfig.create("gemini", relay, JSON)).isInstanceOf(ResilientLlmPort.class);
+        assertThat(relay.require("gemini", "LLM_PROVIDER").settings().chatModels())
+                .containsExactly("modelo-a", "modelo-b", "modelo-c");
+    }
+
+    @Test
     void mockIsOnlyUsedWhenExplicitlySelected() {
         assertThat(LlmConfig.create(" MOCK ", providers("", "", ""), JSON)).isInstanceOf(MockLlmAdapter.class);
     }

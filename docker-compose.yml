@@ -43,8 +43,11 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
       STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-gemini}}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
-      GEMINI_TRANSCRIPTION_MODEL: ${GEMINI_TRANSCRIPTION_MODEL:-gemini-3.5-flash-lite}
+      # Varios modelos separados por comas = relevo (gana el primero que responde)
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}
+      GEMINI_TRANSCRIPTION_MODEL: ${GEMINI_TRANSCRIPTION_MODEL:-gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}
+      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
+      CEREBRAS_MODEL: ${CEREBRAS_MODEL:-gpt-oss-120b}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-small-latest}
       MISTRAL_TRANSCRIPTION_MODEL: ${MISTRAL_TRANSCRIPTION_MODEL:-voxtral-mini-latest}

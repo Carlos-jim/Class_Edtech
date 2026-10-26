@@ -30,6 +30,9 @@ public final class ResilientLlmPort implements LlmPort {
             .retryOnException(ex -> ex instanceof LlmUnavailableException llm && llm.isRetryable())
             .build();
 
+    /** Un solo intento (para cuando el delegado ya reintenta, p. ej. con relevo entre modelos). */
+    public static final RetryConfig NO_RETRY = RetryConfig.custom().maxAttempts(1).build();
+
     public static final CircuitBreakerConfig DEFAULT_CIRCUIT_BREAKER = CircuitBreakerConfig.custom()
             .slidingWindowSize(10)
             .minimumNumberOfCalls(4)

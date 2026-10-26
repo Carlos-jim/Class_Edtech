@@ -64,6 +64,16 @@ transcripción de voz). Un registro (`AiProviders`) asocia cada proveedor con su
 transcripción; cambiar de proveedor —o usar uno para el chat y otro para la voz— es editar `.env`. La aplicación no
 arranca si falta la clave del proveedor elegido y el mensaje dice cuál y dónde conseguirla.
 
+**Relevo entre modelos (hedged requests) contra la latencia del plan gratuito.** Medido desde la red del
+desarrollador, Gemini *lite* tardaba de forma muy irregular (de 1,5 s a más de 40 s incluso para «hola»), y con un solo
+modelo el reintento al mismo modelo duplicaba la espera (20 s + 20 s → 503) y abría el circuit breaker. Como cada modelo
+tiene su propia cola, `Hedging` pide la respuesta al primero y, si en 4 s no ha contestado, también al siguiente (sin
+cancelar el anterior); gana el primero y el resto se cancela (hilos virtuales). Plazo total: 25 s. En una prueba real de
+6 preguntas: con relevo, 6/6 en 5–10 s; con un solo modelo, 2/6 en 25–31 s y 4 fallos. El coste es alguna petición
+extra al proveedor, dentro de la cuota gratuita por modelo. Se aplica al chat y a la transcripción, y la interfaz avisa si
+algo tarda más de 8 s. Para el chat existe además **Cerebras** (`LLM_PROVIDER=cerebras`), especializado en inferencia
+muy rápida, combinable con Gemini para la voz (`STT_PROVIDER=gemini`).
+
 **Voz con Gemini: audio por el chat y WAV en el navegador.** Gemini no ofrece `/audio/transcriptions`; su API
 compatible acepta audio dentro del chat (`input_audio`), pero solo WAV o MP3 (rechaza el webm de Chrome/Edge y el ogg de
 Firefox). `ChatAudioTranscriptionAdapter` envía el audio con la instrucción de transcribirlo literalmente, y el

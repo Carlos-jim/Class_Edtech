@@ -118,4 +118,28 @@ describe('TutorStore', () => {
     expect(store.transition('transcribing')).toBe(true);
     expect(store.transition('reviewing')).toBe(true);
   });
+
+  it('warns when the answer takes longer than usual and clears the warning when it arrives', () => {
+    vi.useFakeTimers();
+    try {
+      const response = new Subject<AskResponse>();
+      ask.mockReturnValue(response);
+      store.load('l2');
+      store.updateDraft('¿Qué es REST?');
+
+      store.send();
+      vi.advanceTimersByTime(7_000);
+      expect(store.statusText()).toBe('El tutor está pensando…');
+
+      vi.advanceTimersByTime(1_500);
+      expect(store.slow()).toBe(true);
+      expect(store.statusText()).toContain('tardando más de lo normal');
+
+      response.next(askResponse('¿Qué es REST?', 'Un estilo de arquitectura.'));
+      expect(store.slow()).toBe(false);
+      expect(store.statusText()).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

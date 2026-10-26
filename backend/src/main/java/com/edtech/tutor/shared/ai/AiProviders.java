@@ -63,6 +63,8 @@ public final class AiProviders {
             return new AiProviders(
                     provider(binder, "gemini", "Gemini", "GEMINI_API_KEY", "https://aistudio.google.com/apikey",
                             TranscriptionApi.CHAT_INPUT_AUDIO),
+                    provider(binder, "cerebras", "Cerebras", "CEREBRAS_API_KEY", "https://cloud.cerebras.ai",
+                            TranscriptionApi.NONE),
                     provider(binder, "groq", "Groq", "GROQ_API_KEY", "https://console.groq.com/keys",
                             TranscriptionApi.AUDIO_TRANSCRIPTIONS),
                     provider(binder, "mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys",

@@ -29,6 +29,27 @@ class SpeechConfigTests {
     }
 
     @Test
+    void severalModelsAreQueriedInRelay() {
+        var relay = new AiProviders(new AiProvider("gemini", "Gemini", "GEMINI_API_KEY", "https://aistudio.google.com/apikey",
+                TranscriptionApi.CHAT_INPUT_AUDIO, new OpenAiCompatibleProperties("k", "https://ai.test/v1", "c",
+                "modelo-a, modelo-b", 0.2, 600, Duration.ofSeconds(3), Duration.ofSeconds(15))));
+
+        assertThat(SpeechConfig.create("gemini", relay)).isInstanceOf(HedgedTranscriptionPort.class);
+    }
+
+    @Test
+    void providersWithoutSpeechToTextFailFastWithAHint() {
+        var chatOnly = new AiProviders(new AiProvider("cerebras", "Cerebras", "CEREBRAS_API_KEY", "https://cloud.cerebras.ai",
+                TranscriptionApi.NONE, new OpenAiCompatibleProperties("k", "https://ai.test/v1", "c", "", 0.2, 600,
+                Duration.ofSeconds(3), Duration.ofSeconds(15))));
+
+        assertThatThrownBy(() -> SpeechConfig.create("cerebras", chatOnly))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cerebras no ofrece voz a texto")
+                .hasMessageContaining("STT_PROVIDER=gemini");
+    }
+
+    @Test
     void mockIsOnlyUsedWhenExplicitlySelected() {
         assertThat(SpeechConfig.create("mock", providers("", "", ""))).isInstanceOf(MockTranscriptionAdapter.class);
     }

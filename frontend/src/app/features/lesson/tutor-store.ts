@@ -59,6 +59,9 @@ export class TutorStore {
   /** VOICE si el borrador viene de una transcripción (aunque el alumno lo edite). */
   readonly draftMode = signal<InputMode>('TEXT');
   readonly requestingMicrophone = signal(false);
+  /** La IA está tardando más de lo habitual (planes gratuitos con picos de demanda): se avisa al alumno. */
+  readonly slow = signal(false);
+  private slowTimer?: ReturnType<typeof setTimeout>;
 
   readonly microphoneSupported = this.recorder.isSupported;
   readonly speechSupported = this.speech.isSupported;
@@ -82,6 +85,9 @@ export class TutorStore {
     if (this.requestingMicrophone()) {
       return 'Solicitando acceso al micrófono…';
     }
+    if (this.slow()) {
+      return SLOW_TEXT[this.phase()] ?? STATUS_TEXT[this.phase()];
+    }
     const text = STATUS_TEXT[this.phase()];
     if (!text && this.speakingId()) {
       return 'Reproduciendo respuesta…';
@@ -104,6 +110,7 @@ export class TutorStore {
       this.transcriptionRequest?.unsubscribe();
       this.recorder.cancel();
       this.speech.stop();
+      clearTimeout(this.slowTimer);
     });
   }
 
@@ -307,7 +314,16 @@ export class TutorStore {
       return false;
     }
     this.phase.set(to);
+    this.watchForSlowness(to);
     return true;
+  }
+
+  private watchForSlowness(phase: TutorPhase): void {
+    clearTimeout(this.slowTimer);
+    this.slow.set(false);
+    if (phase === 'sending' || phase === 'transcribing') {
+      this.slowTimer = setTimeout(() => this.slow.set(true), SLOW_AFTER_MS);
+    }
   }
 
   private fail(kind: TutorErrorKind, error: ApiError): void {
@@ -321,6 +337,14 @@ export class TutorStore {
 }
 
 const RETRYABLE_TRANSCRIPTION = new Set([NETWORK_ERROR, 'TRANSCRIPTION_UNAVAILABLE', 'RATE_LIMITED', 'INTERNAL_ERROR']);
+
+/** A partir de aquí se avisa de que la respuesta tarda más de lo normal. */
+export const SLOW_AFTER_MS = 8_000;
+
+const SLOW_TEXT: Readonly<Partial<Record<TutorPhase, string>>> = {
+  sending: 'El tutor está tardando más de lo normal; seguimos intentándolo…',
+  transcribing: 'La transcripción está tardando más de lo normal; seguimos intentándolo…',
+};
 
 const STATUS_TEXT: Readonly<Record<TutorPhase, string>> = {
   loading: 'Cargando conversación…',

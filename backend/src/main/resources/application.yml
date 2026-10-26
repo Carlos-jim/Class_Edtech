@@ -49,11 +49,11 @@ app:
 
 tutor:
   llm:
-    # gemini (por defecto, GEMINI_API_KEY) | groq (GROQ_API_KEY) | mistral (MISTRAL_API_KEY) | mock (solo tests)
+    # gemini (por defecto) | cerebras (rápido, solo chat) | groq | mistral | mock (solo tests)
     provider: ${LLM_PROVIDER:gemini}
 
 speech:
-  # gemini | groq | mistral | mock (por defecto, el mismo proveedor que el tutor)
+  # gemini | groq | mistral | mock (por defecto, el mismo proveedor que el tutor; cerebras no transcribe)
   provider: ${STT_PROVIDER:${LLM_PROVIDER:gemini}}
   max-audio-size: 5MB
 
@@ -63,13 +63,25 @@ ai:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta/openai
     # Los "lite" responden en 1-3 s y sufren menos picos de demanda (503) en el plan gratuito.
-    chat-model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
-    transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-3.5-flash-lite}
+    # Varios modelos separados por comas = relevo: si uno no responde en 4 s se pide también al siguiente y gana
+    # el primero (cada modelo tiene su propia cola en el plan gratuito).
+    chat-model: ${GEMINI_MODEL:gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}
+    transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}
     temperature: 0.2 # baja: respuestas fieles a la lección
     max-tokens: 1000
     connect-timeout: 3s
     # El modelo lite responde en 1-5 s; en picos de demanda Gemini puede quedarse colgado: mejor fallar pronto,
     # reintentar una vez y, si sigue, ofrecer "Reintentar" al alumno que esperar hasta 90 s.
+    read-timeout: 20s
+  cerebras:
+    # Inferencia muy rápida (chat). No ofrece voz a texto: úsalo con STT_PROVIDER=gemini.
+    api-key: ${CEREBRAS_API_KEY:}
+    base-url: https://api.cerebras.ai/v1
+    chat-model: ${CEREBRAS_MODEL:gpt-oss-120b}
+    transcription-model: ""
+    temperature: 0.2
+    max-tokens: 1500
+    connect-timeout: 3s
     read-timeout: 20s
   mistral:
     api-key: ${MISTRAL_API_KEY:}

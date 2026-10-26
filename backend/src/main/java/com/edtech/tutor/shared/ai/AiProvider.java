@@ -23,7 +23,9 @@ public record AiProvider(String id, String label, String keyEnvVar, String keyUr
         /** {@code POST /audio/transcriptions} multipart (Groq Whisper, Mistral Voxtral). */
         AUDIO_TRANSCRIPTIONS,
         /** Audio en un mensaje de chat ({@code input_audio}, WAV/MP3) con instrucción de transcribir (Gemini). */
-        CHAT_INPUT_AUDIO
+        CHAT_INPUT_AUDIO,
+        /** No ofrece voz a texto (Cerebras): se usa otro proveedor con {@code STT_PROVIDER}. */
+        NONE
     }
 
     /** Mensaje accionable si falta la clave: qué variable rellenar y dónde obtenerla. */

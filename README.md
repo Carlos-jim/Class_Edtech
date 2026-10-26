@@ -141,6 +141,7 @@ adaptadores: **cambiar de proveedor es solo editar `.env`**.
 | `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) | Notas |
 |---|---|---|---|---|
 | `gemini` (por defecto) | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | `gemini-3.5-flash-lite` · el mismo | Gratuito, sin tarjeta. La voz se transcribe enviando el audio (WAV) por el chat |
+| `cerebras` | `CEREBRAS_API_KEY` | https://cloud.cerebras.ai | `gpt-oss-120b` · — (no transcribe) | Gratuito y **muy rápido** para el chat; úsalo con `STT_PROVIDER=gemini` |
 | `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` | Gratuito, pero **bloquea algunas redes/regiones** (403 *Access denied*) |
 | `mistral` | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` | Desde oct-2026 su plan gratuito **no permite claves de API** |
 
@@ -149,7 +150,13 @@ adaptadores: **cambiar de proveedor es solo editar `.env`**.
 2. Elige proveedor con `LLM_PROVIDER`; la voz usa el mismo salvo que indiques `STT_PROVIDER` (se pueden mezclar).
 3. `docker compose up -d` (recrea el backend con la nueva configuración).
 
-Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `GROQ_MODEL`, etc. Las claves solo viven en el
+**Relevo entre modelos.** `GEMINI_MODEL` y `GEMINI_TRANSCRIPTION_MODEL` admiten varios modelos separados por comas
+(por defecto, tres *lite*): si el primero no responde en 4 s se pide también al siguiente, y gana el primero que llega.
+Cada modelo tiene su propia cola en el plan gratuito, así que recorta mucho las esperas: en una prueba real de 6
+preguntas, con relevo todas respondieron en 5–10 s; con un solo modelo, 2 tardaron 25–31 s y las otras 4 fallaron. Si
+una respuesta tarda más de 8 s, la interfaz lo indica.
+
+Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `CEREBRAS_MODEL`, `GROQ_MODEL`, etc. Las claves solo viven en el
 backend. El navegador convierte cada grabación a **WAV 16 kHz mono** antes de subirla (≈ 1,9 MB por minuto): es el
 formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
 
