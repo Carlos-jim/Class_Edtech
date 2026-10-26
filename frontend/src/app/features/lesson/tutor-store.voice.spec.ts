@@ -63,7 +63,7 @@ describe('TutorStore · voz', () => {
 
     await store.stopRecording();
 
-    expect(transcribe).toHaveBeenCalledWith(audio);
+    expect(transcribe).toHaveBeenCalledWith(audio, 'l2'); // con la lección como contexto
     expect(store.phase()).toBe('reviewing');
     expect(store.draft()).toBe('¿Para qué sirve POST?');
     expect(store.draftMode()).toBe('VOICE');
@@ -128,7 +128,7 @@ describe('TutorStore · voz', () => {
     store.retry();
 
     expect(recorder.start).not.toHaveBeenCalled();
-    expect(transcribe).toHaveBeenLastCalledWith(audio);
+    expect(transcribe).toHaveBeenLastCalledWith(audio, 'l2');
     expect(store.phase()).toBe('reviewing');
     expect(store.draft()).toBe('¿Qué es REST?');
   });

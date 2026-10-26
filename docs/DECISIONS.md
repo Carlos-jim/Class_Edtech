@@ -98,6 +98,15 @@ mensajes como contexto.
 | TTS con `speechSynthesis` del navegador | TTS en la nube | Gratuito, sin latencia de red ni datos a terceros; suficiente para una POC |
 | Leer en voz alta automáticamente solo si la pregunta fue por voz | Siempre / nunca | Conversación natural por voz sin molestar a quien escribe; botón *Escuchar* siempre disponible |
 
+**Contexto de la lección para transcribir.** Sin contexto, el modelo elige ante un sonido dudoso la palabra más
+probable en general (en una prueba real transcribió «atestiguar» por «explicar»). El navegador envía la lección
+junto al audio; el backend comprueba el acceso (`AccessPolicy`, 404 si no hay matrícula) y extrae su vocabulario de
+forma determinista (`LessonVocabulary`: títulos, negritas, código en línea como `404 Not Found`, siglas). Se pasa a
+Gemini en las instrucciones —con la orden de usarlo solo para escribir bien lo que se dice, nunca para añadirlo— y a
+Whisper (Groq) en su campo `prompt`. En pruebas con la frase problemática, con ruido y compresión: con contexto,
+correcta en 2 de 2; sin contexto, 1 de 2 («Me podría…»). Un modelo mayor (`gemini-3.5-flash`) no transcribió mejor y
+tardó ~30 s, así que se mantiene el *lite*. La revisión editable antes de enviar sigue siendo la red de seguridad.
+
 Detalles: formato elegido según el navegador (webm/opus o mp4 en Safari) y duración máxima de 60 s (~240 KB); el
 backend valida el **formato real por su firma binaria** (no el `Content-Type`), limita a 5 MB y descarta alucinaciones
 conocidas de Whisper con silencio («Subtítulos realizados por la comunidad de Amara.org»). Si la transcripción falla

@@ -252,7 +252,7 @@ voz). Detalle de decisiones y patrones en [`docs/DECISIONS.md`](docs/DECISIONS.m
 | `GET` | `/api/lessons/{id}` | Bearer + matrícula | Lección (Markdown) con navegación |
 | `GET` | `/api/lessons/{id}/messages` | Bearer + matrícula | Historial **del alumno** en esa lección |
 | `POST` | `/api/lessons/{id}/messages` | Bearer + matrícula | `{content, inputMode: TEXT\|VOICE}` → `{question, answer}` con `answer.grounded` |
-| `POST` | `/api/transcriptions` | Bearer | Multipart `audio` (webm/ogg/m4a/wav/mp3, ≤ 5 MB) → `{text}` |
+| `POST` | `/api/transcriptions` | Bearer (+ matrícula si se indica `lessonId`) | Multipart `audio` (webm/ogg/m4a/wav/mp3, ≤ 5 MB) y `lessonId` opcional (su vocabulario mejora la transcripción) → `{text}` |
 
 Errores en formato RFC 9457 (`application/problem+json`) con un `code` estable (`INVALID_CREDENTIALS`,
 `UNAUTHENTICATED`, `NOT_FOUND`, `AI_UNAVAILABLE`, `NO_SPEECH_DETECTED`, `RATE_LIMITED`…). Un recurso sin acceso

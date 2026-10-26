@@ -18,10 +18,17 @@ const EXTENSIONS: Record<string, string> = {
 export class TranscriptionApi {
   private readonly http = inject(HttpClient);
 
-  transcribe(audio: Blob): Observable<TranscriptionResult> {
+  /**
+   * @param lessonId lección en curso: el backend usa su vocabulario como contexto para transcribir mejor
+   *                 (p. ej. «códigos de estado», «PATCH») y comprueba que el alumno tiene acceso a ella.
+   */
+  transcribe(audio: Blob, lessonId?: string | null): Observable<TranscriptionResult> {
     const extension = EXTENSIONS[audio.type.split(';')[0]!.trim()] ?? 'webm';
     const form = new FormData();
     form.append('audio', audio, `pregunta.${extension}`);
+    if (lessonId) {
+      form.append('lessonId', lessonId);
+    }
     return this.http.post<TranscriptionResult>('/api/transcriptions', form);
   }
 }

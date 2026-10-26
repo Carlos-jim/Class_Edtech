@@ -246,7 +246,7 @@ export class TutorStore {
   }
 
   private transcribe(audio: Blob): void {
-    this.transcriptionRequest = this.transcriptionApi.transcribe(audio).subscribe({
+    this.transcriptionRequest = this.transcriptionApi.transcribe(audio, this.lessonId).subscribe({
       next: ({ text }) => {
         this.lastAudio = null;
         this.draft.set(text);

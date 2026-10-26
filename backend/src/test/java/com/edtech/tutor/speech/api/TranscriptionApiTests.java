@@ -2,6 +2,7 @@ package com.edtech.tutor.speech.api;
 
 import static com.edtech.tutor.SeedData.ANA;
 import static com.edtech.tutor.SeedData.BRUNO;
+import static com.edtech.tutor.SeedData.LESSON_2;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +31,29 @@ class TranscriptionApiTests {
         upload(ANA, audio(TestAudio.webm(8192), "audio/webm;codecs=opus"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value(MockTranscriptionAdapter.SAMPLE_TRANSCRIPT));
+    }
+
+    @Test
+    void lessonContextIsAcceptedForLessonsTheStudentCanAccess() throws Exception {
+        mvc.perform(multipart("/api/transcriptions").file(audio(TestAudio.webm(8192), "audio/webm"))
+                        .param("lessonId", LESSON_2.toString())
+                        .header(HttpHeaders.AUTHORIZATION, TestTokens.bearer(jwtEncoder, ANA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value(MockTranscriptionAdapter.SAMPLE_TRANSCRIPT));
+    }
+
+    @Test
+    void lessonContextOfALessonWithoutAccessIsRejectedLikeTheRestOfTheApi() throws Exception {
+        mvc.perform(multipart("/api/transcriptions").file(audio(TestAudio.webm(8192), "audio/webm"))
+                        .param("lessonId", LESSON_2.toString())
+                        .header(HttpHeaders.AUTHORIZATION, TestTokens.bearer(jwtEncoder, BRUNO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        mvc.perform(multipart("/api/transcriptions").file(audio(TestAudio.webm(8192), "audio/webm"))
+                        .param("lessonId", "no-es-un-uuid")
+                        .header(HttpHeaders.AUTHORIZATION, TestTokens.bearer(jwtEncoder, ANA)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

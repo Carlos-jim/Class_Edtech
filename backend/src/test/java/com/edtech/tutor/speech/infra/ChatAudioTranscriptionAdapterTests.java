@@ -15,9 +15,11 @@ import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.speech.TestAudio;
 import com.edtech.tutor.speech.domain.AudioClip;
 import com.edtech.tutor.speech.domain.AudioFormat;
+import com.edtech.tutor.speech.domain.TranscriptionHint;
 import com.edtech.tutor.speech.domain.TranscriptionUnavailableException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -60,6 +62,21 @@ class ChatAudioTranscriptionAdapterTests {
 
         assertThat(adapter.transcribe(WAV)).isEqualTo("¿Para qué sirve el método POST?");
         server.verify();
+    }
+
+    @Test
+    void addsTheLessonVocabularyToTheInstructionsWhenAvailable() {
+        var hint = new TranscriptionHint("Introducción a las APIs REST", List.of("códigos de estado", "404 Not Found"));
+        var clip = new AudioClip(WAV.data(), AudioFormat.WAV, hint);
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.messages[0].content").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.startsWith(ChatAudioTranscriptionAdapter.INSTRUCTIONS),
+                        org.hamcrest.Matchers.containsString("«Introducción a las APIs REST»"),
+                        org.hamcrest.Matchers.containsString("códigos de estado, 404 Not Found"))))
+                .andRespond(withSuccess(completion("¿Se podría explicar un poco cuáles son los códigos de estado?"),
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(adapter.transcribe(clip)).isEqualTo("¿Se podría explicar un poco cuáles son los códigos de estado?");
     }
 
     @Test

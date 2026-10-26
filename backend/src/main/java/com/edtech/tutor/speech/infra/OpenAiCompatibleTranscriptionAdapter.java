@@ -31,11 +31,22 @@ public class OpenAiCompatibleTranscriptionAdapter implements TranscriptionPort {
     private final RestClient http;
     private final OpenAiCompatibleProperties properties;
     private final String provider;
+    private final boolean sendsPromptHint;
 
     public OpenAiCompatibleTranscriptionAdapter(RestClient http, OpenAiCompatibleProperties properties, String provider) {
+        this(http, properties, provider, false);
+    }
+
+    /**
+     * @param sendsPromptHint envía el vocabulario de la lección en el campo {@code prompt} (Whisper lo admite; otros
+     *                        proveedores no lo documentan y podrían rechazarlo)
+     */
+    public OpenAiCompatibleTranscriptionAdapter(RestClient http, OpenAiCompatibleProperties properties, String provider,
+                                                boolean sendsPromptHint) {
         this.http = http;
         this.properties = properties;
         this.provider = provider;
+        this.sendsPromptHint = sendsPromptHint;
     }
 
     @Override
@@ -49,6 +60,9 @@ public class OpenAiCompatibleTranscriptionAdapter implements TranscriptionPort {
         form.add("model", properties.transcriptionModel());
         form.add("language", "es");
         form.add("temperature", "0");
+        if (sendsPromptHint && !clip.hint().isEmpty()) {
+            form.add("prompt", clip.hint().whisperPrompt());
+        }
 
         try {
             var response = http.post()

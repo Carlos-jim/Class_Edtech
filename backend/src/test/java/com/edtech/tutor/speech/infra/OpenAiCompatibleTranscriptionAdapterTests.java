@@ -18,8 +18,10 @@ import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.speech.TestAudio;
 import com.edtech.tutor.speech.domain.AudioClip;
 import com.edtech.tutor.speech.domain.AudioFormat;
+import com.edtech.tutor.speech.domain.TranscriptionHint;
 import com.edtech.tutor.speech.domain.TranscriptionUnavailableException;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -60,6 +62,26 @@ class OpenAiCompatibleTranscriptionAdapterTests {
 
         assertThat(adapter.transcribe(CLIP)).isEqualTo(" ¿Para qué sirve POST?");
         server.verify();
+    }
+
+    @Test
+    void sendsTheLessonVocabularyAsWhisperPromptOnlyWhenEnabled() {
+        var hint = new TranscriptionHint("Métodos HTTP", List.of("PATCH", "idempotente"));
+        var clip = new AudioClip(CLIP.data(), AudioFormat.WEBM, hint);
+
+        var whisperBuilder = RestClient.builder().baseUrl(PROPS.baseUrl());
+        var whisperServer = MockRestServiceServer.bindTo(whisperBuilder).build();
+        var whisper = new OpenAiCompatibleTranscriptionAdapter(whisperBuilder.build(), PROPS, "Groq", true);
+        whisperServer.expect(requestTo(URL))
+                .andExpect(content().string(allOf(containsString("name=\"prompt\""), containsString("PATCH, idempotente"))))
+                .andRespond(withSuccess("{\"text\":\"¿Qué es PATCH?\"}", MediaType.APPLICATION_JSON));
+        assertThat(whisper.transcribe(clip)).isEqualTo("¿Qué es PATCH?");
+        whisperServer.verify();
+
+        server.expect(requestTo(URL))
+                .andExpect(content().string(not(containsString("name=\"prompt\""))))
+                .andRespond(withSuccess("{\"text\":\"¿Qué es PATCH?\"}", MediaType.APPLICATION_JSON));
+        assertThat(adapter.transcribe(clip)).isEqualTo("¿Qué es PATCH?");
     }
 
     @Test

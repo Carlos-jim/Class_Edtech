@@ -29,8 +29,8 @@ public class ChatAudioTranscriptionAdapter implements TranscriptionPort {
 
     static final String INSTRUCTIONS = """
             Transcribe literalmente el audio en español. Devuelve solo el texto transcrito, sin comillas ni \
-            comentarios. No respondas a la pregunta del audio: solo transcríbela. Si no hay voz, devuelve una cadena \
-            vacía.""";
+            comentarios. Escribe exactamente las palabras dichas: no las cambies por otras parecidas ni reformules. \
+            No respondas a la pregunta del audio: solo transcríbela. Si no hay voz, devuelve una cadena vacía.""";
 
     private static final Map<AudioFormat, String> SUPPORTED = Map.of(AudioFormat.WAV, "wav", AudioFormat.MP3, "mp3");
 
@@ -78,7 +78,7 @@ public class ChatAudioTranscriptionAdapter implements TranscriptionPort {
         }
         var audio = new ContentPart("input_audio", new InputAudio(Base64.getEncoder().encodeToString(clip.data()), format));
         var request = new ChatRequest(properties.transcriptionModel(),
-                List.of(new ChatMessage("system", INSTRUCTIONS), new ChatMessage("user", List.of(audio))), 0);
+                List.of(new ChatMessage("system", instructions(clip)), new ChatMessage("user", List.of(audio))), 0);
 
         ChatResponse response;
         try {
@@ -112,6 +112,11 @@ public class ChatAudioTranscriptionAdapter implements TranscriptionPort {
         }
         var text = response.choices().getFirst().message().content();
         return text == null ? "" : stripWrappingQuotes(text.strip());
+    }
+
+    /** Instrucciones + contexto de la lección, si lo hay. */
+    static String instructions(AudioClip clip) {
+        return clip.hint().isEmpty() ? INSTRUCTIONS : INSTRUCTIONS + "\n\n" + clip.hint().instructions();
     }
 
     /** Algunos modelos devuelven la transcripción entre comillas pese a la instrucción. */

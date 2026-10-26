@@ -33,7 +33,9 @@ class SpeechConfig {
         var ai = providers.require(selected, "STT_PROVIDER");
         log.info("Voz a texto: proveedor {}, modelo {}", ai.label(), ai.settings().transcriptionModel());
         return switch (ai.transcription()) {
-            case AUDIO_TRANSCRIPTIONS -> new OpenAiCompatibleTranscriptionAdapter(ai.restClient(), ai.settings(), ai.label());
+            // Whisper (Groq) admite "prompt" para sesgar el vocabulario; Mistral no lo documenta.
+            case AUDIO_TRANSCRIPTIONS -> new OpenAiCompatibleTranscriptionAdapter(
+                    ai.restClient(), ai.settings(), ai.label(), "groq".equals(ai.id()));
             case CHAT_INPUT_AUDIO -> new ChatAudioTranscriptionAdapter(ai.restClient(), ai.settings(), ai.label());
         };
     }

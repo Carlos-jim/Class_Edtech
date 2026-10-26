@@ -73,7 +73,8 @@ export class LessonPage {
   async awaitAnswers(expectedTutorCount: number, retries = 4, waitBetweenMs = 15_000): Promise<void> {
     for (let attempt = 0; ; attempt++) {
       try {
-        await expect(this.tutorMessages).toHaveCount(expectedTutorCount, { timeout: 30_000 });
+        // 60 s: más que lo que tarda el backend en rendirse (timeout de 20 s + un reintento) con un proveedor lento
+        await expect(this.tutorMessages).toHaveCount(expectedTutorCount, { timeout: 60_000 });
         return;
       } catch (error) {
         const retryButton = this.error.getByRole('button', { name: 'Reintentar' });

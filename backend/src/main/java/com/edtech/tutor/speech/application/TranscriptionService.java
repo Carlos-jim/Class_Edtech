@@ -4,6 +4,7 @@ import com.edtech.tutor.shared.web.ApiException;
 import com.edtech.tutor.shared.web.ErrorCode;
 import com.edtech.tutor.speech.domain.AudioClip;
 import com.edtech.tutor.speech.domain.AudioFormat;
+import com.edtech.tutor.speech.domain.TranscriptionHint;
 import com.edtech.tutor.speech.domain.TranscriptionPort;
 import com.edtech.tutor.speech.domain.TranscriptionUnavailableException;
 import java.text.Normalizer;
@@ -44,6 +45,11 @@ public class TranscriptionService {
     }
 
     public String transcribe(byte[] audio) {
+        return transcribe(audio, TranscriptionHint.NONE);
+    }
+
+    /** @param hint vocabulario de la lección para transcribir mejor (o {@link TranscriptionHint#NONE}) */
+    public String transcribe(byte[] audio, TranscriptionHint hint) {
         if (audio == null || audio.length == 0) {
             throw new ApiException(ErrorCode.AUDIO_INVALID, "No se ha recibido ningún audio");
         }
@@ -55,7 +61,7 @@ public class TranscriptionService {
         }
         var format = AudioFormat.detect(audio).orElseThrow(() -> new ApiException(ErrorCode.AUDIO_INVALID));
 
-        var text = clean(transcribeWithRetry(new AudioClip(audio, format)));
+        var text = clean(transcribeWithRetry(new AudioClip(audio, format, hint)));
         if (text.isEmpty() || isHallucination(text)) {
             throw new ApiException(ErrorCode.NO_SPEECH_DETECTED);
         }
