@@ -20,18 +20,26 @@ export class MarkdownRenderer {
   });
 
   render(markdown: string): string {
-    const html = this.marked.parse(markdown ?? '') as string;
-    return DOMPurify.sanitize(html, {
-      USE_PROFILES: { html: true },
-      FORBID_TAGS: ['style', 'iframe', 'form', 'input', 'button', 'object', 'embed'],
-      FORBID_ATTR: ['style'],
-    });
+    return sanitize(this.marked.parse(markdown ?? '') as string);
+  }
+
+  /** Solo formato en línea (negrita, cursiva, código), sin párrafos: para fragmentos como las citas del tutor. */
+  renderInline(markdown: string): string {
+    return sanitize(this.marked.parseInline(markdown ?? '') as string);
   }
 
   /** Títulos de sección (##, ###) para sugerir preguntas al alumno. */
   headings(markdown: string): string[] {
     return [...(markdown ?? '').matchAll(/^#{2,3}\s+(.+)$/gm)].map((match) => match[1]!.trim());
   }
+}
+
+function sanitize(html: string): string {
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'iframe', 'form', 'input', 'button', 'object', 'embed'],
+    FORBID_ATTR: ['style'],
+  });
 }
 
 function escapeHtml(text: string): string {

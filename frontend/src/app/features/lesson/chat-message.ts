@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ChatMessage } from '../../core/api/tutor-api';
+import { MarkdownRenderer } from '../../core/markdown/markdown-renderer';
 import { Icon } from '../../shared/ui/icon';
 
 /**
  * Burbuja de chat. El contenido se muestra SIEMPRE con interpolación ({{ }}), que Angular escapa:
- * ni la pregunta del alumno ni la respuesta del modelo pueden inyectar HTML.
+ * ni la pregunta del alumno ni la respuesta del modelo pueden inyectar HTML. La cita es un fragmento literal del
+ * Markdown de la lección: se muestra con su formato en línea a través del mismo renderizador sanitizado.
  */
 @Component({
   selector: 'app-chat-message',
@@ -43,7 +45,7 @@ import { Icon } from '../../shared/ui/icon';
               class="mt-2 border-l-2 border-emerald-300 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-slate-600"
               data-testid="tutor-citation"
             >
-              <span class="font-medium text-emerald-800">De la lección: </span>{{ message().citation }}
+              <span class="font-medium text-emerald-800">De la lección: </span><span [innerHTML]="citationHtml()"></span>
             </blockquote>
           }
           <div class="mt-1.5 flex flex-wrap items-center gap-2">
@@ -68,6 +70,9 @@ export class ChatMessageView {
   readonly message = input.required<ChatMessage>();
   readonly pending = input(false);
 
+  private readonly markdown = inject(MarkdownRenderer);
+
+  protected readonly citationHtml = computed(() => this.markdown.renderInline(this.message().citation ?? ''));
   protected readonly isStudent = computed(() => this.message().role === 'STUDENT');
   protected readonly time = computed(() => {
     const date = new Date(this.message().createdAt);

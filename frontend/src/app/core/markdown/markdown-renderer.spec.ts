@@ -28,6 +28,18 @@ describe('MarkdownRenderer', () => {
     expect(html).not.toMatch(/href="data:/i);
   });
 
+  it('renders inline formatting without paragraphs and still escapes raw HTML', () => {
+    const html = TestBed.inject(MarkdownRenderer).renderInline(
+      'Los **métodos** dicen *qué hacer* con `GET` <img src=x onerror="alert(1)">',
+    );
+
+    expect(html).toContain('<strong>métodos</strong>');
+    expect(html).toContain('<em>qué hacer</em>');
+    expect(html).toContain('<code>GET</code>');
+    expect(html).not.toContain('<p>');
+    expect(html).not.toContain('<img');
+  });
+
   it('extracts section headings for suggestions', () => {
     expect(TestBed.inject(MarkdownRenderer).headings('# T\n## ¿Qué es REST?\ntexto\n### GET — Leer\n#### no')).toEqual([
       '¿Qué es REST?',
