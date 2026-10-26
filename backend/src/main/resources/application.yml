@@ -74,7 +74,7 @@ ai:
     # reintentar una vez y, si sigue, ofrecer "Reintentar" al alumno que esperar hasta 90 s.
     read-timeout: 20s
   cerebras:
-    # Inferencia muy rápida (chat). No ofrece voz a texto: úsalo con STT_PROVIDER=gemini.
+    # Opcional: inferencia muy rápida (chat), pero su alta pide tarjeta. Sin voz a texto: STT_PROVIDER=gemini.
     api-key: ${CEREBRAS_API_KEY:}
     base-url: https://api.cerebras.ai/v1
     chat-model: ${CEREBRAS_MODEL:gpt-oss-120b}

@@ -141,7 +141,7 @@ adaptadores: **cambiar de proveedor es solo editar `.env`**.
 | `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) | Notas |
 |---|---|---|---|---|
 | `gemini` (por defecto) | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | `gemini-3.5-flash-lite` · el mismo | Gratuito, sin tarjeta. La voz se transcribe enviando el audio (WAV) por el chat |
-| `cerebras` | `CEREBRAS_API_KEY` | https://cloud.cerebras.ai | `gpt-oss-120b` · — (no transcribe) | Gratuito y **muy rápido** para el chat; úsalo con `STT_PROVIDER=gemini` |
+| `cerebras` | `CEREBRAS_API_KEY` | https://cloud.cerebras.ai | `gpt-oss-120b` · — (no transcribe) | Muy rápido para el chat, pero **pide vincular una tarjeta**: no se usa por defecto. Combinable con `STT_PROVIDER=gemini` |
 | `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` | Gratuito, pero **bloquea algunas redes/regiones** (403 *Access denied*) |
 | `mistral` | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` | Desde oct-2026 su plan gratuito **no permite claves de API** |
 

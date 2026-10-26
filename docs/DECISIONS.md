@@ -71,8 +71,9 @@ tiene su propia cola, `Hedging` pide la respuesta al primero y, si en 4 s no ha 
 cancelar el anterior); gana el primero y el resto se cancela (hilos virtuales). Plazo total: 25 s. En una prueba real de
 6 preguntas: con relevo, 6/6 en 5–10 s; con un solo modelo, 2/6 en 25–31 s y 4 fallos. El coste es alguna petición
 extra al proveedor, dentro de la cuota gratuita por modelo. Se aplica al chat y a la transcripción, y la interfaz avisa si
-algo tarda más de 8 s. Para el chat existe además **Cerebras** (`LLM_PROVIDER=cerebras`), especializado en inferencia
-muy rápida, combinable con Gemini para la voz (`STT_PROVIDER=gemini`).
+algo tarda más de 8 s. Se evaluó **Cerebras** (`LLM_PROVIDER=cerebras`), especializado en inferencia muy rápida: queda como proveedor
+opcional (configurado y probado con tests), pero **no por defecto**, porque su alta pide vincular una tarjeta y la POC
+debe funcionar sin servicios de pago ni tarjetas. Gemini con relevo cumple esa condición.
 
 **Voz con Gemini: audio por el chat y WAV en el navegador.** Gemini no ofrece `/audio/transcriptions`; su API
 compatible acepta audio dentro del chat (`input_audio`), pero solo WAV o MP3 (rechaza el webm de Chrome/Edge y el ogg de
