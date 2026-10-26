@@ -61,8 +61,9 @@ Necesitas una **clave de Google Gemini** (gratuita, sin tarjeta): https://aistud
 
 ### Primera vez (solo una vez)
 
-**1. Crear la configuración (`.env`).** El script pide la clave de Gemini, genera el secreto JWT y crea `.env`.
-Si `.env` ya existe **no lo toca**, así que ejecutarlo de nuevo es seguro.
+**1. Crear la configuración (`.env`).** El script crea `.env`, genera el secreto JWT y pide la clave de Gemini.
+Si `.env` ya existe solo completa lo que falte (p. ej. una clave vacía) y **conserva el resto**, así que ejecutarlo de
+nuevo es seguro.
 
 ```bash
 ./scripts/setup.sh                                          # Linux / macOS
@@ -98,6 +99,10 @@ sobrescribiría tu clave). Solo tienes que arrancar:
 | Aplicar cambios tras actualizar el código (`git pull`) | `docker compose up -d --build` |
 | Cambiar la clave u otra opción | Edita `.env` y ejecuta `docker compose up -d` (recrea lo necesario) |
 | Empezar de cero (**borra** conversaciones y BD) | `docker compose down -v` |
+
+**`dependency failed to start: container lms-tutor-backend-1 is unhealthy`**: mira el motivo con
+`docker compose logs backend --tail 60`. Si dice `requiere GEMINI_API_KEY`, la clave de `.env` está vacía: ejecuta de
+nuevo el script del paso 1 (la pide y conserva lo demás) y después `docker compose up -d`.
 
 > En Windows y macOS, abre Docker Desktop antes de ejecutar estos comandos.
 
@@ -173,7 +178,7 @@ formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
 Requisitos: JDK 25, Node 24 LTS (`frontend/.nvmrc`; Angular 22 no admite Node 25) y Docker para PostgreSQL.
 
 ```bash
-./scripts/setup.sh                 # solo la primera vez (crea .env; si ya existe no lo toca)
+./scripts/setup.sh                 # solo la primera vez (crea .env; si ya existe, completa lo que falte)
 docker compose up -d postgres
 
 cd backend && ./mvnw spring-boot:run          # http://localhost:8080 (lee ../.env)
@@ -285,7 +290,7 @@ responde 404, igual que uno inexistente.
 ├── backend/              Spring Boot (auth, catalog, tutor, speech, shared) + Flyway (db/migration, db/seed)
 ├── frontend/             Angular (core, features, shared) + e2e/ (Playwright) + nginx/
 ├── docs/                 DECISIONS.md · DEMO.md · DESIGN.md
-├── scripts/              setup.sh · setup.ps1 (crean .env la primera vez)
+├── scripts/              setup.sh · setup.ps1 (crean o completan .env)
 ├── .github/workflows/    CI
 ├── docker-compose.yml    PostgreSQL + backend + frontend
 └── .env.example          Variables de entorno (sin secretos)
