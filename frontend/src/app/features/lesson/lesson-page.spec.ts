@@ -64,7 +64,7 @@ describe('LessonPage', () => {
     const { el } = await render();
 
     expect(el.querySelector('h1')?.textContent).toContain('Métodos HTTP');
-    expect(el.querySelector('[aria-current=page]')?.textContent).toContain('Métodos HTTP');
+    expect(el.querySelector('[aria-current=page]')?.textContent).toContain('Lección 2'); // ruta de navegación
     const body = el.querySelector('[data-testid=lesson-body]')!;
     expect(body.innerHTML).toContain('<strong>crear</strong>');
     expect(body.querySelector('script')).toBeNull();

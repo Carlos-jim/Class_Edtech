@@ -18,7 +18,7 @@ import { Icon } from '../../shared/ui/icon';
       <div class="flex justify-end">
         <div class="max-w-[85%]">
           <div
-            class="whitespace-pre-line rounded-2xl rounded-br-md bg-brand-600 px-4 py-2.5 text-sm text-white shadow-sm"
+            class="whitespace-pre-line rounded-2xl rounded-br-md bg-brand-400 px-4 py-2.5 text-sm text-slate-900 shadow-sm"
             [class.opacity-70]="pending()"
             data-testid="student-message"
           >{{ message().content }}</div>
@@ -32,7 +32,7 @@ import { Icon } from '../../shared/ui/icon';
       </div>
     } @else {
       <div class="flex gap-2.5">
-        <span class="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+        <span class="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-brand-400 text-slate-900">
           <app-icon name="sparkles" [size]="14" />
         </span>
         <div class="min-w-0 max-w-[85%]">

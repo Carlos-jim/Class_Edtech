@@ -1,19 +1,42 @@
-/* Sistema visual: ver docs/DESIGN.md (referencias: Coursera, Khanmigo, Udemy, Linear, Stripe). */
-@import "@fontsource-variable/inter";
+/*
+ * Sistema visual: ver docs/DESIGN.md. Referencia: panel de cursos tipo "acourses" (contenedor flotante redondeado,
+ * barra lateral blanca, acento naranja, tarjetas muy redondeadas con ilustraciones pastel).
+ */
+@import "@fontsource-variable/plus-jakarta-sans";
 @import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  /* Marca */
-  --color-brand-50: var(--color-indigo-50);
-  --color-brand-100: var(--color-indigo-100);
-  --color-brand-500: var(--color-indigo-500);
-  --color-brand-600: var(--color-indigo-600);
-  --color-brand-700: var(--color-indigo-700);
+  /*
+   * Marca: naranja. Reglas de contraste (WCAG AA):
+   *   - brand-400/500 como FONDO (botones, burbujas) siempre con texto oscuro (slate-900): ~9:1.
+   *   - Texto naranja sobre blanco: solo brand-700 (5:1). brand-400/500 solo en iconos y detalles decorativos.
+   */
+  --color-brand-50: #fff8ec;
+  --color-brand-100: #ffefd2;
+  --color-brand-200: #ffdca1;
+  --color-brand-300: #ffc866;
+  --color-brand-400: #fdb022;
+  --color-brand-500: #f59a0b;
+  --color-brand-600: #d97706;
+  --color-brand-700: #b45309;
+  --color-brand-800: #92400e;
+
+  /* Lienzo: fondo exterior y contenedor flotante de la app */
+  --color-canvas: #eef0f4;
+  --color-surface: #f7f8fa;
+
+  /* Ilustraciones pastel de las tarjetas */
+  --color-pastel-yellow: #ffd65c;
+  --color-pastel-lavender: #a5a8ff;
+  --color-pastel-pink: #ffb3c4;
+
+  --shadow-float: 0 30px 80px -24px rgb(15 23 42 / 0.18);
+  --shadow-soft: 0 8px 24px -12px rgb(15 23 42 / 0.12);
 
   --animate-fade-in: fade-in 180ms ease-out both;
 
@@ -31,7 +54,7 @@
 
 @layer base {
   html {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-canvas text-slate-900 antialiased;
   }
 
   body {
@@ -39,18 +62,19 @@
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-brand-700 ring-offset-2 ring-offset-white;
   }
 }
 
 /* Componentes reutilizables declarados como utilidades (Tailwind 4) para poder combinarlos y usar variantes. */
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium
-    transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold
+    transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
+/* Naranja con texto oscuro: el aspecto de la referencia con contraste AA. */
 @utility btn-primary {
-  @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700;
+  @apply btn bg-brand-400 text-slate-900 shadow-sm hover:bg-brand-500;
 }
 
 @utility btn-secondary {
@@ -62,13 +86,17 @@
 }
 
 @utility input {
-  @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900
+  @apply block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900
     placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none
-    focus:ring-2 focus:ring-brand-500/20 aria-invalid:border-red-500 aria-invalid:focus:ring-red-500/20;
+    focus:ring-4 focus:ring-brand-400/20 aria-invalid:border-red-500 aria-invalid:focus:ring-red-500/20;
 }
 
 @utility card {
-  @apply rounded-xl border border-slate-200 bg-white;
+  @apply rounded-3xl bg-white shadow-soft;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600;
 }
 
 @utility skeleton {

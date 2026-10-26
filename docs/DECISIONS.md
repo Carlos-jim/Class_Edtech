@@ -119,8 +119,11 @@ por el servicio o la red, se reintenta con **la misma grabación** (se guarda en
 
 ## 6. Experiencia de uso
 
-Diseño basado en patrones de plataformas conocidas (`DESIGN.md`): temario lateral (Coursera), tutor junto al contenido
-(Khanmigo), estados de voz (ChatGPT). Estado de la interacción siempre visible y anunciado a lectores de pantalla
+Diseño basado en la referencia visual "acourses" (`DESIGN.md`): contenedor flotante, barra lateral con el temario,
+acento naranja, tarjetas redondeadas con ilustraciones pastel propias y el tutor como columna derecha junto al contenido.
+De la referencia se toma el lenguaje visual, no sus funciones (calendario, pagos, valoraciones): cada zona muestra datos
+reales. El naranja con texto blanco no alcanza el contraste AA, así que los botones naranjas llevan texto oscuro; estados
+de voz al estilo de los asistentes de voz (ChatGPT). Estado de la interacción siempre visible y anunciado a lectores de pantalla
 (`aria-live`). Cada error tiene un mensaje concreto **y una acción**: *Reintentar*, *Escribir en su lugar*, *Grabar de
 nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móvil). Accesibilidad auditada con axe-core
 (WCAG 2.1 AA) en los E2E; se corrigieron los problemas de contraste y de nombres accesibles que detectó.

@@ -12,7 +12,7 @@ conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la l
 |---|---|
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisiones de arquitectura, seguridad e IA; límites y aspectos no desarrollados |
 | [`docs/DEMO.md`](docs/DEMO.md) | Guion de la demostración (≈ 10 min) |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | Guía de diseño y plataformas de referencia (Coursera, Khanmigo, Udemy, Linear) |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Guía de diseño: referencia visual (panel de cursos "acourses"), tokens, contraste y componentes |
 
 ---
 

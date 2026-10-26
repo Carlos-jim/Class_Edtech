@@ -22,12 +22,12 @@ import { TutorStore } from './tutor-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col bg-white' },
   template: `
-    <header class="flex items-center gap-3 border-b border-slate-200 px-5 py-3.5">
-      <span class="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
-        <app-icon name="sparkles" [size]="16" />
+    <header class="flex items-center gap-3 px-6 pb-3 pt-6">
+      <span class="grid size-10 place-items-center rounded-2xl bg-brand-400 text-slate-900">
+        <app-icon name="sparkles" [size]="18" />
       </span>
       <div class="min-w-0 flex-1">
-        <h2 class="text-sm font-semibold text-slate-900">Tutor IA</h2>
+        <h2 class="text-lg font-bold text-slate-900">Tutor IA</h2>
         <p class="truncate text-xs text-slate-500">Responde con el contenido de esta lección</p>
       </div>
       @if (closable()) {
@@ -55,7 +55,7 @@ import { TutorStore } from './tutor-store';
       } @else {
         @if (store.messages().length === 0 && !store.pending()) {
           <div class="py-6 text-center" data-testid="tutor-empty">
-            <span class="mx-auto grid size-12 place-items-center rounded-full bg-brand-50 text-brand-600">
+            <span class="mx-auto grid size-12 place-items-center rounded-full bg-brand-50 text-brand-500">
               <app-icon name="sparkles" [size]="22" />
             </span>
             <p class="mt-3 text-sm font-medium text-slate-900">¿Tienes dudas sobre la lección?</p>
@@ -81,7 +81,7 @@ import { TutorStore } from './tutor-store';
               <button
                 type="button"
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors"
-                [class]="speaking ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'"
+                [class]="speaking ? 'bg-brand-400 text-slate-900' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'"
                 [attr.aria-label]="speaking ? 'Detener lectura de la respuesta' : 'Escuchar respuesta'"
                 [attr.aria-pressed]="speaking"
                 (click)="store.toggleSpeech(message)"
@@ -96,7 +96,7 @@ import { TutorStore } from './tutor-store';
         @if (pendingMessage(); as pending) {
           <app-chat-message [message]="pending" [pending]="true" />
           <div class="flex gap-2.5" data-testid="tutor-typing" aria-hidden="true">
-            <span class="grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+            <span class="grid size-7 shrink-0 place-items-center rounded-full bg-brand-400 text-slate-900">
               <app-icon name="sparkles" [size]="14" />
             </span>
             <div class="flex items-center gap-1 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3">
@@ -152,11 +152,11 @@ import { TutorStore } from './tutor-store';
           </p>
         }
         <form
-          class="rounded-xl border bg-white transition-colors focus-within:ring-2"
+          class="rounded-2xl border bg-white transition-colors focus-within:ring-2"
           [class]="
             store.phase() === 'reviewing'
-              ? 'border-brand-500 ring-2 ring-brand-500/20'
-              : 'border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-500/20'
+              ? 'border-brand-500 ring-2 ring-brand-400/25'
+              : 'border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-400/25'
           "
           (submit)="$event.preventDefault(); store.send()"
         >

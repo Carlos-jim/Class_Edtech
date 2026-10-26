@@ -1,103 +1,113 @@
 # Guía de diseño — POC LMS Tutor IA
 
-Objetivo: interfaz **profesional, sobria y enfocada en el aprendizaje**. Se toman patrones probados de plataformas
-reconocidas en lugar de inventar convenciones nuevas.
+Objetivo: interfaz **cálida, limpia y profesional**, enfocada en aprender. La referencia visual es un panel de cursos
+tipo **"acourses"** (Dribbble): contenedor flotante redondeado, barra lateral blanca, acento naranja, tarjetas muy
+redondeadas con ilustraciones pastel y una columna derecha con la agenda.
 
-## Referencias y qué se toma de cada una
+## De la referencia a la POC
 
-| Plataforma | Patrón que se adopta | Dónde se aplica |
-|---|---|---|
-| **Coursera** | Reproductor de lección con temario lateral (lista numerada de lecciones, la activa resaltada) y breadcrumb `Curso › Lección` | Pantalla de lección |
-| **Udemy** | Tarjeta de curso con título, descripción, nº de lecciones y duración estimada; CTA claro "Continuar" | Mis cursos |
-| **Khan Academy · Khanmigo** | Tutor IA en **panel lateral junto al contenido**, no en una página aparte: el alumno lee y pregunta sin perder contexto | Panel del tutor |
-| **ChatGPT / Gemini (modo voz)** | Botón de micrófono con estados visibles (grabando con temporizador y onda, transcribiendo, respondiendo) y transcripción editable antes de enviar | Interacción por voz |
-| **Notion / Linear** | Tipografía limpia, paleta neutra, mucho espacio en blanco, bordes sutiles en lugar de sombras pesadas | Sistema visual global |
-| **Stripe Dashboard** | Login centrado y minimalista; mensajes de error concretos y accionables | Login y estados de error |
+La referencia incluye calendario, pagos, mensajes, valoraciones con estrellas y buscador global. El enunciado pide no
+añadir funcionalidades ajenas, así que **se adopta el lenguaje visual y cada zona se rellena con datos reales**:
+
+| Referencia | En la POC |
+|---|---|
+| Barra lateral: Overview, Courses, Calendar, Payments, Messages, Log Out | **Mis cursos** + **lecciones del curso** (temario navegable) + **Salir** |
+| Indicador naranja a la izquierda del elemento activo | Igual: en "Mis cursos" y en la lección abierta |
+| Buscador superior | Buscador de cursos en "Mis cursos" (solo aparece si hay más de un curso) |
+| Avatar y nombre arriba a la derecha | Iniciales del alumno y nombre; saludo a la izquierda |
+| Pestañas All / Active / Upcoming / Completed | Omitidas: no hay estado de progreso en el modelo |
+| Tarjeta horizontal: ilustración pastel, título, ★ valoración, descripción, etiquetas, fecha, "View More" | Ilustración pastel propia (SVG), título, **duración**, descripción, etiquetas reales (nº de lecciones, Tutor IA, Texto y voz), "Empieza por la lección 1", **"Empezar curso"** |
+| Calendario semanal | Tarjeta **"Tu tutor IA"** (qué hace y cómo) |
+| Schedule: número grande, separador, título, "10 of 20 chapters", hora; primera fila elevada | **Temario**: `01`, separador, título, "Lección 1 de 2", duración; primera fila elevada |
+| — (no aparece) | Pantalla de lección: contenido en tarjetas a la izquierda y **panel del tutor** como columna derecha |
+
+Las ilustraciones son un SVG propio (`CourseArt`: ventana de navegador con `{ }` y `POST` hacia un servidor) en tres
+variantes pastel (amarillo, lavanda, rosa) que alternan como las tarjetas de la referencia. No se usan imágenes de
+terceros.
 
 ## Layout
 
-### Escritorio (≥ 1280 px) — tres zonas, inspirado en Coursera + Khanmigo
+### Escritorio (≥ 1280 px)
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ ◆ EdTech Tutor        Mis cursos                                    (AG) Ana ▾ │  topbar 56px
-├───────────────┬─────────────────────────────────────┬────────────────────────────┤
-│ FUNDAMENTOS   │ Fundamentos de APIs REST › Lección 2│  ✦ Tutor IA          ⟲  ✕ │
-│ DE APIs REST  │                                     │ ─────────────────────────  │
-│               │ Métodos HTTP: GET, POST, PUT…       │  Pregunta sobre esta       │
-│ ● 1 Intro...  │ ⏱ 12 min                            │  lección. Respondo solo    │
-│ ◉ 2 Métodos   │                                     │  con su contenido.         │
-│               │ ## Los métodos HTTP                 │                            │
-│               │ Lorem ipsum… (prose, max 72ch)      │  [Tú] ¿Para qué sirve POST?│
-│               │                                     │  [Tutor] POST sirve…  🔊   │
-│               │                                     │                            │
-│               │                                     │ ┌────────────────────────┐ │
-│               │                                     │ │ Escribe tu pregunta… 🎙 ➤│ │
-│   280px       │          flexible                   │ └────────────────────────┘ │
-│               │                                     │         400px              │
-└───────────────┴─────────────────────────────────────┴────────────────────────────┘
+┌──────────────────────────── fondo canvas ─────────────────────────────┐
+│ ╭──────────┬─────────────────────────────────────────────────────────╮ │
+│ │  (logo)  │ Hola, Ana. Sigue aprendiendo…              (AG) Ana García │
+│ │ edtech   │                                                         │ │
+│ │  tutor   │ Mis cursos                          │ ╭ Tu tutor IA ──╮ │ │
+│ │          │ ╭──────┬───────────────────────────╮ │ ╰───────────────╯ │ │
+│ │━ Mis cur.│ │ art  │ Título           ⏱ 22 min │ │ Temario           │ │
+│ │          │ │pastel│ descripción…               │ │ ╭ 01 │ Intro… ╮  │ │
+│ │ FUNDAM.  │ │      │ [2 lecciones] [Tutor IA]   │ │ ╰─────────────╯  │ │
+│ │ 1 Intro  │ │      │ Empieza por…  (Empezar →)  │ │   02 │ Métodos…  │ │
+│ │ 2 Métodos│ ╰──────┴───────────────────────────╯ │                   │ │
+│ │ ⇥ Salir  │                                                         │ │
+│ ╰──────────┴─────────────────────────────────────────────────────────╯ │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-### Tablet / móvil
+En la lección, la zona central tiene dos columnas: **contenido** (cabecera en tarjeta con miniatura ilustrada, cuerpo
+en tarjeta blanca, anterior/siguiente) y **tutor IA** (tarjeta blanca de altura completa).
 
-- `< 1280 px`: el temario pasa a un drawer (botón ☰).
-- `< 768 px`: el tutor se abre como **bottom sheet** a pantalla completa desde un botón flotante "Preguntar al tutor".
+### Tablet y móvil
 
-## Tokens (Tailwind)
+- `< 1280 px`: sin contenedor flotante; la barra lateral pasa a un **menú desplegable** (botón "Abrir menú").
+- `< 1024 px`: el tutor se abre a pantalla completa desde el botón flotante **"Preguntar al tutor"**.
+- Las tarjetas de curso apilan la ilustración encima del texto.
+
+## Tokens (Tailwind 4, `src/styles.css`)
 
 ### Color
 
-| Rol | Token Tailwind | Uso |
+| Rol | Token | Valor / uso |
 |---|---|---|
-| Fondo app | `slate-50` | Lienzo |
-| Superficie | `white` + `border-slate-200` | Tarjetas, paneles |
-| Texto principal / secundario | `slate-900` / `slate-500` | — |
-| Primario (marca) | `indigo-600`, hover `indigo-700`, suave `indigo-50` | CTA, lección activa, burbuja del alumno |
-| Basado en la lección | `emerald-600` / `emerald-50` | Badge "Basado en la lección" |
-| Fuera del contenido | `amber-600` / `amber-50` | Badge "Sin información suficiente en la lección" |
-| Grabando | `rose-600` | Micrófono activo, pulso |
-| Error | `red-600` / `red-50` | Alertas con acción "Reintentar" |
+| Fondo exterior | `canvas` | `#eef0f4` |
+| Contenedor de la app | `surface` | `#f7f8fa` |
+| Tarjetas, barra lateral | `white` + `shadow-soft` | Sombras suaves, sin bordes |
+| Marca | `brand-50 … brand-800` | Naranja: `brand-400` `#fdb022` (botones), `brand-500` (iconos, indicador), `brand-700` (texto) |
+| Pastel de ilustraciones | `pastel-yellow`, `pastel-lavender`, `pastel-pink` | Fondos de `CourseArt` |
+| Texto | `slate-900` / `slate-600` / `slate-500` | Títulos / secundario sobre `surface` / secundario sobre blanco |
+| Basado en la lección | `emerald-50/700` | Insignia y cita |
+| Sin información suficiente | `amber-50/700` | Insignia |
+| Grabando | `rose-*` | Barra de grabación |
 
-Contraste mínimo **WCAG AA** (4.5:1 en texto).
+**Reglas de contraste (WCAG AA, verificadas con axe-core en los E2E):**
+
+- El naranja de la referencia con **texto blanco no cumple** (≈ 2:1). Los botones naranjas (`btn-primary`) llevan
+  **texto oscuro** (`slate-900` sobre `brand-400`, ≈ 9:1), igual que la burbuja del alumno y los avatares.
+- Texto naranja sobre blanco: solo `brand-700` (≈ 5:1); sobre el crema `brand-100`, `brand-800`.
+- Texto secundario sobre `surface`: `slate-600` (el `slate-500` queda en 4,4:1 sobre ese fondo).
 
 ### Tipografía
 
-- UI: **Inter** (400/500/600). Código: **JetBrains Mono**.
-- Contenido de la lección: plugin `@tailwindcss/typography` (`prose prose-slate`), ancho máx. `72ch`, `text-base/7`.
-- Escala: título de página `text-2xl font-semibold`, sección `text-lg font-semibold`, cuerpo `text-sm`/`text-base`.
+- UI: **Plus Jakarta Sans** (variable, servida desde la app), geométrica y redondeada como la referencia.
+  Código: **JetBrains Mono**.
+- Títulos en `font-bold` con `tracking-tight`: página `text-3xl`, tarjeta `text-lg`, lección `text-2xl`.
+- Lección: `prose prose-slate`, código con fondo `brand-50`.
 
 ### Forma y espacio
 
-- Radios: `rounded-lg` (inputs, botones), `rounded-xl` (tarjetas, paneles), `rounded-2xl` (burbujas de chat).
-- Sombras: solo `shadow-sm`; se prioriza el borde `border-slate-200`.
-- Espaciado base 4 px; paneles con `p-6`, listas con `gap-2`/`gap-3`.
-- Iconos: **Lucide** (trazo 1.5–2 px, consistentes).
+- Radios grandes: contenedor `2rem`, tarjetas `rounded-3xl`, ilustraciones y filas `rounded-2xl`, botones y chips
+  en píldora (`rounded-full` / `rounded-lg`).
+- Sombras: `shadow-soft` (tarjetas) y `shadow-float` (contenedor, hover).
+- Iconos: **Lucide** (trazo 2 px).
 
-## Componentes clave
+## Componentes
 
 | Componente | Notas |
 |---|---|
-| `CourseCard` | Título, descripción (2 líneas), `2 lecciones · 22 min`, botón "Continuar" |
-| `LessonSidebar` | Lista numerada; activa con borde izquierdo `indigo-600` y fondo `indigo-50` |
-| `LessonContent` | Breadcrumb, título, duración, `prose`. Markdown renderizado **y sanitizado** |
-| `TutorPanel` | Cabecera con estado, lista de mensajes con scroll, composer fijo abajo |
-| `ChatMessage` | Alumno: derecha, `indigo-600` texto blanco, icono 🎙 si fue por voz. Tutor: izquierda, superficie blanca con borde, badge de grounding y botón 🔊 escuchar |
-| `VoiceButton` | Estados: reposo → grabando (rojo, pulso, `00:07`) → transcribiendo (spinner) → revisión (texto editable) |
-| `StatusBar` | Línea bajo la cabecera del tutor: "Escuchando…", "Transcribiendo…", "El tutor está pensando…", "Reproduciendo respuesta…" (`aria-live="polite"`) |
-| `ErrorBanner` | Mensaje concreto + acción: "Reintentar", "Escribir en su lugar", "Revisar permisos del micrófono" |
-| `EmptyState` | Bruno (sin cursos): ilustración simple + "Aún no tienes cursos asignados" |
-| `AccessDenied` | Lección sin acceso: "No tienes acceso a esta lección" + volver a Mis cursos (sin revelar detalles) |
-
-## Microinteracciones
-
-- Indicador "escribiendo" del tutor con tres puntos animados (como ChatGPT).
-- Auto-scroll al último mensaje; respeta si el usuario ha subido manualmente.
-- Transiciones de 150–200 ms (`ease-out`); se respeta `prefers-reduced-motion`.
-- Skeletons al cargar lección e historial (no spinners a pantalla completa).
+| `Shell` + `SidebarNav` | Contenedor flotante; barra lateral con logo, "Mis cursos", lecciones del curso (indicador naranja en la activa) y "Salir" |
+| `CourseCard` | Horizontal: `CourseArt`, título, duración, descripción, chips, "Empezar curso" |
+| `CourseArt` | SVG decorativo (`aria-hidden`) con tres variantes pastel |
+| Temario (columna derecha) | Filas tipo agenda; la primera elevada en blanco |
+| `LessonContent` | Ruta de navegación, cabecera en tarjeta con miniatura, cuerpo en tarjeta, anterior/siguiente |
+| `TutorPanel` | Tarjeta blanca de altura completa; burbuja del alumno naranja con texto oscuro; insignias de grounding; cita "De la lección" |
+| `AlertBanner` | Mensaje concreto + acción ("Reintentar", "Escribir en su lugar", "Grabar de nuevo") |
 
 ## Accesibilidad
 
-- Todo operable por teclado; foco visible `ring-2 ring-indigo-500 ring-offset-2`.
-- `aria-live` para estados del tutor y nuevos mensajes.
-- Botones de icono con `aria-label` ("Grabar pregunta por voz", "Escuchar respuesta").
-- No depender solo del color: los badges llevan icono + texto.
+- Todo operable con teclado (E2E de recorrido solo con teclado); foco visible `ring-brand-700`.
+- `aria-live` para los estados del tutor; `aria-current="page"` en el elemento activo de la navegación.
+- Iconos decorativos ocultos; botones de icono con `aria-label`; los nombres accesibles contienen el texto visible.
+- Auditoría automática WCAG 2.1 AA (axe-core) del login, "Mis cursos" y la lección en cada ejecución de la CI.
+- Se respeta `prefers-reduced-motion`.

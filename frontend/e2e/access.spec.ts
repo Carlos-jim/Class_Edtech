@@ -7,7 +7,8 @@ test.describe('Control de acceso', () => {
     await signInAs('bruno');
     await page.goto('/courses');
 
-    await expect(page.getByRole('heading', { name: 'Hola, Bruno' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Mis cursos' })).toBeVisible();
+    await expect(page.getByTestId('current-user')).toHaveText('Bruno López');
     await expect(page.getByTestId('courses-empty')).toContainText('Aún no tienes cursos asignados');
   });
 

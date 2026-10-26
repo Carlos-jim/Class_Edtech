@@ -28,8 +28,8 @@ test.describe('POC · requisitos del enunciado (01–06)', () => {
     await page.getByRole('link', { name: /Empezar curso: Fundamentos de APIs REST/ }).click();
 
     await expect(lessonPage.title).toContainText('Introducción a las APIs REST');
-    const syllabus = page.getByRole('navigation', { name: 'Temario del curso' });
-    // Temario = enlace «Mis cursos» + 2 lecciones
+    // Temario en la barra lateral: enlace «Mis cursos» + las 2 lecciones del curso
+    const syllabus = page.getByRole('navigation', { name: 'Principal' });
     await expect(syllabus.getByRole('link', { name: /Introducción a las APIs REST/ })).toBeVisible();
     await expect(syllabus.getByRole('link', { name: /Métodos HTTP/ })).toBeVisible();
 
@@ -42,7 +42,8 @@ test.describe('POC · requisitos del enunciado (01–06)', () => {
     await signInAs('bruno');
     await page.goto('/courses');
 
-    await expect(page.getByRole('heading', { name: 'Hola, Bruno' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Mis cursos' })).toBeVisible();
+    await expect(page.getByTestId('current-user')).toHaveText('Bruno López');
     await expect(page.getByTestId('courses-empty')).toBeVisible();
 
     await lessonPage.goto(LESSON_2);

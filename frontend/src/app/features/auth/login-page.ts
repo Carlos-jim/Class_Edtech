@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { ApiError, toApiError } from '../../core/api/api-error';
 import { AuthService } from '../../core/auth/auth.service';
 import { AlertBanner } from '../../shared/ui/alert-banner';
+import { CourseArt } from '../../shared/ui/course-art';
 import { Icon } from '../../shared/ui/icon';
 
 interface DemoAccount {
@@ -24,53 +25,52 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, AlertBanner, Icon],
+  imports: [ReactiveFormsModule, RouterLink, AlertBanner, CourseArt, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <!-- Panel de marca -->
-      <aside class="relative hidden overflow-hidden bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-600 p-12 text-white lg:flex lg:flex-col">
-        <div class="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-white/10 blur-3xl"></div>
-        <div class="pointer-events-none absolute -bottom-32 -left-16 size-96 rounded-full bg-violet-400/20 blur-3xl"></div>
-
-        <div class="relative flex items-center gap-2.5 text-lg font-semibold">
-          <span class="grid size-9 place-items-center rounded-lg bg-white/15 ring-1 ring-white/25">
-            <app-icon name="graduation-cap" [size]="20" />
+    <div class="min-h-dvh lg:p-6">
+    <div class="grid min-h-dvh bg-white lg:min-h-[calc(100dvh-3rem)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:overflow-hidden lg:rounded-[2rem] lg:shadow-float">
+      <!-- Panel de marca (pastel, como las tarjetas de la referencia) -->
+      <aside class="relative hidden flex-col overflow-hidden bg-brand-100 p-12 text-slate-900 lg:flex">
+        <a class="relative flex items-center gap-2.5 text-lg font-bold tracking-tight" routerLink="/login">
+          <span class="grid size-10 place-items-center rounded-2xl bg-white text-brand-500 shadow-soft">
+            <app-icon name="graduation-cap" [size]="22" [strokeWidth]="2.25" />
           </span>
-          EdTech Tutor
-        </div>
+          <span>edtech<span class="text-brand-800">tutor</span></span>
+        </a>
 
-        <div class="relative mt-auto max-w-md">
-          <h2 class="text-3xl font-semibold leading-tight tracking-tight">Aprende a tu ritmo, con un tutor que conoce tu lección.</h2>
-          <ul class="mt-8 space-y-4 text-indigo-50">
+        <app-course-art class="relative mx-auto mt-10 aspect-[5/4] w-full max-w-sm rounded-[2rem] shadow-float" variant="yellow" />
+
+        <div class="relative mt-auto max-w-md pt-10">
+          <h2 class="text-3xl font-bold leading-tight tracking-tight">Aprende a tu ritmo, con un tutor que conoce tu lección.</h2>
+          <ul class="mt-6 space-y-3 text-sm text-slate-700">
             <li class="flex gap-3">
-              <app-icon name="mic" class="mt-0.5 text-indigo-200" />
-              <span>Pregunta por escrito o en voz alta y escucha la respuesta.</span>
+              <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-brand-600"><app-icon name="mic" [size]="15" /></span>
+              <span class="pt-1">Pregunta por escrito o en voz alta y escucha la respuesta.</span>
             </li>
             <li class="flex gap-3">
-              <app-icon name="book-open" class="mt-0.5 text-indigo-200" />
-              <span>Respuestas basadas en el contenido de la lección, sin inventar.</span>
+              <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-brand-600"><app-icon name="book-open" [size]="15" /></span>
+              <span class="pt-1">Respuestas basadas en el contenido de la lección, sin inventar.</span>
             </li>
             <li class="flex gap-3">
-              <app-icon name="refresh-cw" class="mt-0.5 text-indigo-200" />
-              <span>Retoma tu conversación cuando vuelvas.</span>
+              <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-brand-600"><app-icon name="refresh-cw" [size]="15" /></span>
+              <span class="pt-1">Retoma tu conversación cuando vuelvas.</span>
             </li>
           </ul>
         </div>
-        <p class="relative mt-12 text-sm text-indigo-200">Prueba de concepto · LMS con tutor de IA</p>
       </aside>
 
       <!-- Formulario -->
       <main class="flex items-center justify-center px-6 py-12 sm:px-12">
         <div class="w-full max-w-sm animate-fade-in">
-          <div class="mb-8 flex items-center gap-2.5 text-lg font-semibold text-slate-900 lg:hidden">
-            <span class="grid size-9 place-items-center rounded-lg bg-brand-600 text-white">
-              <app-icon name="graduation-cap" [size]="20" />
+          <div class="mb-8 flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-800 lg:hidden">
+            <span class="grid size-10 place-items-center rounded-2xl bg-brand-50 text-brand-500">
+              <app-icon name="graduation-cap" [size]="22" [strokeWidth]="2.25" />
             </span>
-            EdTech Tutor
+            <span>edtech<span class="text-brand-700">tutor</span></span>
           </div>
 
-          <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Inicia sesión</h1>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900">Inicia sesión</h1>
           <p class="mt-1.5 text-sm text-slate-500">Accede a tus cursos y a tu tutor virtual.</p>
 
           @if (sessionExpired()) {
@@ -112,7 +112,7 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
                 />
                 <button
                   type="button"
-                  class="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-lg text-slate-400 hover:text-slate-600"
+                  class="absolute inset-y-0 right-1 grid w-10 place-items-center rounded-r-2xl text-slate-500 hover:text-slate-700"
                   [attr.aria-label]="passwordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                   (click)="passwordVisible.set(!passwordVisible())"
                 >
@@ -134,15 +134,15 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
             </button>
           </form>
 
-          <section class="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4" aria-labelledby="demo-title">
-            <h2 id="demo-title" class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <section class="mt-8 rounded-3xl bg-surface p-5" aria-labelledby="demo-title">
+            <h2 id="demo-title" class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <app-icon name="info" [size]="14" /> Cuentas de demostración
             </h2>
             <div class="mt-3 grid gap-2">
               @for (account of demoAccounts; track account.email) {
                 <button
                   type="button"
-                  class="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:border-brand-500 hover:bg-brand-50"
+                  class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-left text-sm shadow-soft transition-colors hover:bg-brand-50"
                   (click)="useDemo(account)"
                 >
                   <span>
@@ -153,10 +153,11 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
                 </button>
               }
             </div>
-            <p class="mt-3 text-xs text-slate-500">Contraseña: <code class="font-mono text-slate-700">{{ demoPassword }}</code></p>
+            <p class="mt-3 text-xs text-slate-600">Contraseña: <code class="font-mono text-slate-700">{{ demoPassword }}</code></p>
           </section>
         </div>
       </main>
+    </div>
     </div>
   `,
 })
