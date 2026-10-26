@@ -39,10 +39,13 @@ fi
 provider=$(value_of LLM_PROVIDER)
 if [[ "${provider:-gemini}" == "gemini" && -z "$(value_of GEMINI_API_KEY)" ]]; then
   echo "Falta la clave de Google Gemini (gratuita, sin tarjeta): https://aistudio.google.com/apikey"
-  read -rsp "Pega tu clave (no se muestra al escribir): " api_key
+  read -rsp "Pega tu clave (no se muestra al escribir): " raw_key
   echo
-  if [[ ! "$api_key" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
-    echo "✘ La clave no parece válida (sin espacios, al menos 20 caracteres). Vuelve a ejecutar el script." >&2
+  # Al pegar pueden colarse espacios, comillas o caracteres de control: se quitan.
+  api_key=$(printf '%s' "$raw_key" | tr -d '[:space:][:cntrl:]"'"'"'`')
+  if [[ ${#api_key} -lt 20 || ! "$api_key" =~ ^[[:graph:]]+$ ]]; then
+    echo "✘ No se ha recibido una clave válida (${#api_key} caracteres útiles de ${#raw_key} recibidos)." >&2
+    echo "  Vuelve a ejecutar el script, o edita .env y pon la clave tras GEMINI_API_KEY= (sin espacios ni comillas)." >&2
     exit 1
   fi
   set_value GEMINI_API_KEY "$api_key"

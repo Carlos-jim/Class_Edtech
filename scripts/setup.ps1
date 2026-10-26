@@ -50,12 +50,16 @@ if ((-not $provider -or $provider -eq 'gemini') -and -not (Get-EnvValue 'GEMINI_
     $secure = Read-Host 'Pega tu clave (no se muestra al escribir)' -AsSecureString
     $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {
-        $apiKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim()
+        $raw = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     } finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
     }
-    if ($apiKey -notmatch '^[A-Za-z0-9_-]{20,}$') {
-        Write-Host '✘ La clave no parece válida (sin espacios, al menos 20 caracteres). Vuelve a ejecutar el script.' -ForegroundColor Red
+    # Al pegar en la consola pueden colarse caracteres de control (Ctrl+V), espacios o comillas: se quitan.
+    $apiKey = ($raw -replace '[\x00-\x20\x7F"''`]', '')
+    if ($apiKey.Length -lt 20 -or $apiKey -notmatch '^[\x21-\x7E]+$') {
+        Write-Host "✘ No se ha recibido una clave válida ($($apiKey.Length) caracteres útiles de $($raw.Length) recibidos)." -ForegroundColor Red
+        Write-Host '  Si al pegar no aparece nada, pega con clic derecho (o Ctrl+Mayús+V) en lugar de Ctrl+V,'
+        Write-Host '  o edita .env con el Bloc de notas y pon la clave tras GEMINI_API_KEY= (sin espacios ni comillas).'
         exit 1
     }
     Set-EnvValue 'GEMINI_API_KEY' $apiKey
