@@ -60,6 +60,9 @@ jobs:
           sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n/+=')|" .env
           # La suite hace muchas peticiones seguidas desde la misma IP y el mismo alumno.
           printf 'RATE_LIMIT_LOGIN_PER_MINUTE=1000\nRATE_LIMIT_QUESTIONS_PER_MINUTE=1000\nRATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE=1000\n' >> .env
+          # Respuestas deterministas y sin gastar cuota: la CI usa el proveedor simulado (la clave no se usa).
+          printf 'LLM_PROVIDER=mock\nSTT_PROVIDER=mock\n' >> .env
+          sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=unused-in-ci|" .env
 
       - name: Levantar PostgreSQL + backend + frontend (nginx)
         run: docker compose up -d --build --wait

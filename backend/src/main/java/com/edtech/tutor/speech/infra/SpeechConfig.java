@@ -24,10 +24,10 @@ class SpeechConfig {
     }
 
     static TranscriptionPort create(String provider, GroqProperties groq) {
-        var selected = provider == null || provider.isBlank() ? "mock" : provider.strip().toLowerCase(Locale.ROOT);
+        var selected = provider == null || provider.isBlank() ? "groq" : provider.strip().toLowerCase(Locale.ROOT);
         return switch (selected) {
             case "mock" -> {
-                log.info("Voz a texto: proveedor MOCK (transcripción simulada)");
+                log.warn("Voz a texto: proveedor MOCK (transcripción simulada, solo para tests automáticos)");
                 yield new MockTranscriptionAdapter();
             }
             case "groq" -> {

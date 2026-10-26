@@ -13,7 +13,7 @@ import org.springframework.web.client.RestClient;
 public class GroqClient {
 
     public static final String MISSING_KEY_MESSAGE =
-            "requiere GROQ_API_KEY (gratuita en https://console.groq.com/keys). Usa el valor 'mock' para ejecutar sin clave.";
+            "requiere GROQ_API_KEY: crea una clave gratuita en https://console.groq.com/keys y añádela a .env.";
 
     public static RestClient restClient(GroqProperties properties) {
         var httpClient = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();

@@ -16,13 +16,14 @@ conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la l
 
 ---
 
-## 1. Puesta en marcha rápida (Docker, sin claves)
+## 1. Puesta en marcha rápida (Docker)
 
-Requisitos: Docker con Docker Compose.
+Requisitos: Docker con Docker Compose y una **clave de Groq** (gratuita, sin tarjeta): https://console.groq.com/keys
 
 ```bash
 cp .env.example .env
 sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48)|" .env   # o edítalo a mano (≥ 32 caracteres)
+sed -i.bak "s|^GROQ_API_KEY=.*|GROQ_API_KEY=gsk_TU_CLAVE|" .env              # pega aquí tu clave de Groq
 docker compose up --build
 ```
 
@@ -30,7 +31,9 @@ En **Windows** (Docker Desktop, PowerShell; desde la raíz del repo):
 
 ```powershell
 $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+$groqKey = 'gsk_TU_CLAVE'   # pega aquí tu clave de Groq
 $envText = [IO.File]::ReadAllText("$PWD\.env.example") -replace '(?m)^JWT_SECRET=[^\r\n]*', ("JWT_SECRET=" + [Convert]::ToBase64String($b))
+$envText = $envText -replace '(?m)^GROQ_API_KEY=[^\r\n]*', ("GROQ_API_KEY=" + $groqKey)
 [IO.File]::WriteAllText("$PWD\.env", $envText)
 docker compose up --build
 ```
@@ -48,8 +51,8 @@ Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a l
 | `ana.garcia@demo.edtech` | `Demo1234!` | Matriculada en *Fundamentos de APIs REST* (2 lecciones) |
 | `bruno.lopez@demo.edtech` | `Demo1234!` | Sin acceso al curso |
 
-Por defecto la IA y la transcripción funcionan en **modo simulado** (`LLM_PROVIDER=mock`): no hace falta ninguna clave
-y el recorrido completo es demostrable. Para usar el modelo real, ver la [sección 3](#3-ia-real-con-groq-gratuito).
+El tutor y la transcripción de voz usan **Groq**. Sin `GROQ_API_KEY` en `.env`, `docker compose up` se detiene y
+explica dónde conseguirla. Más detalles en la [sección 3](#3-ia-con-groq).
 
 > El puerto se cambia con `APP_PORT` en `.env`. La base de datos se publica solo en `127.0.0.1:${DB_PORT}`.
 > Si `docker compose up` falla con *port is already allocated* (otro contenedor o servicio usa el 8080 o el 5433),
@@ -64,25 +67,24 @@ y el recorrido completo es demostrable. Para usar el modelo real, ver la [secci�
 | 03 | **Tutor contextual** | En *Métodos HTTP* pregunta «¿Para qué sirve POST?» → respuesta con la insignia verde *Basado en la lección*. Pregunta «¿Cuál es la capital de Francia?» → insignia ámbar *Sin información suficiente en la lección*. |
 | 04 | **Voz y texto** | Pulsa el micrófono, habla y detén: el texto transcrito aparece para **revisarlo y editarlo** antes de enviar. La respuesta a una pregunta por voz se lee en voz alta; cualquier respuesta tiene el botón **Escuchar**. |
 | 05 | **Continuidad** | Recarga la página, o cierra sesión y vuelve a entrar: la conversación de cada lección sigue ahí (es por alumno y por lección). |
-| 06 | **Estados y errores** | El panel muestra *Escuchando…*, *Transcribiendo…*, *El tutor está pensando…*, *Reproduciendo respuesta…*. Para ver la recuperación: escribe una pregunta que contenga `#simular-fallo` (caída simulada de la IA: la pregunta se conserva y aparece *Reintentar*); deniega el permiso del micrófono (*Escribir en su lugar*); o desconecta la red (DevTools → *Offline*). |
+| 06 | **Estados y errores** | El panel muestra *Escuchando…*, *Transcribiendo…*, *El tutor está pensando…*, *Reproduciendo respuesta…*. Para ver la recuperación: desconecta la red (DevTools → *Network* → *Offline*) y envía una pregunta (se conserva y aparece *Reintentar*); o deniega el permiso del micrófono (*Escribir en su lugar*). |
 
 La lectura en voz alta usa las voces del navegador (`speechSynthesis`). Si el navegador no tiene ninguna —en Linux
 hace falta `speech-dispatcher`, y los navegadores Flatpak (p. ej. Opera) no lo ven— el panel lo avisa con *Reintentar*
 en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
 
-En el modo simulado la transcripción siempre devuelve «¿Para qué sirve POST?» (se puede editar antes de enviar); con
-Groq se transcribe la voz real.
-
-## 3. IA real con Groq (gratuito)
+## 3. IA con Groq
 
 1. Crea una clave en https://console.groq.com/keys (plan gratuito).
-2. En `.env`: `LLM_PROVIDER=groq` y `GROQ_API_KEY=gsk_...` (la transcripción usa el mismo proveedor salvo que se
-   indique `STT_PROVIDER`).
-3. `docker compose up --build` de nuevo.
+2. Ponla en `.env`: `GROQ_API_KEY=gsk_...` (la misma clave sirve para el tutor y para la voz).
+3. `docker compose up --build`.
 
 Modelos: `openai/gpt-oss-120b` para el tutor (`GROQ_MODEL`; reemplazo actual del Llama 3.3 retirado en el plan
-gratuito de Groq) y `whisper-large-v3-turbo` para la voz. La clave solo vive en el backend; si falta con
-`LLM_PROVIDER=groq`, la aplicación no arranca y explica cómo resolverlo.
+gratuito de Groq) y `whisper-large-v3-turbo` para la voz. La clave solo vive en el backend; si falta, la aplicación
+no arranca y explica cómo resolverlo.
+
+> Existe un proveedor simulado (`LLM_PROVIDER=mock`) **solo para los tests automáticos y la CI**: respuestas
+> deterministas, sin red ni cuota. No está pensado para usar la aplicación.
 
 ## 4. Desarrollo local (sin Docker para la app)
 
@@ -101,20 +103,22 @@ Flyway crea el esquema y carga los datos de demostración al arrancar.
 ## 5. Tests y CI
 
 ```bash
-cd backend  && ./mvnw verify       # 110 tests: unitarios, integración (Testcontainers) y E2E de API
-cd frontend && npm run test:ci     # 71 tests unitarios (Vitest)
+cd backend  && ./mvnw verify       # 112 tests: unitarios, integración (Testcontainers) y E2E de API
+cd frontend && npm run test:ci     # 74 tests unitarios (Vitest)
 
-# E2E de interfaz (Playwright, Chromium con micrófono simulado) contra el stack de Docker:
-docker compose up -d --build
+# E2E de interfaz (Playwright, Chromium con micrófono simulado) contra el stack de Docker.
+# La suite completa espera las respuestas deterministas del proveedor simulado:
+LLM_PROVIDER=mock STT_PROVIDER=mock docker compose up -d --build
 cd frontend && npx playwright install chromium && E2E_BASE_URL=http://localhost:8080 npm run e2e   # suite completa
 
-# Solo el recorrido del enunciado (01–06), pensado también para LLM_PROVIDER=groq:
+# Solo el recorrido del enunciado (01–06), también contra Groq (docker compose up -d --build, sin variables):
 E2E_BASE_URL=http://localhost:8080 npm run e2e:poc
 ```
 
 > Los E2E hacen muchas peticiones seguidas: en `.env` sube los límites (`RATE_LIMIT_*_PER_MINUTE=1000`), como hace
 > la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests). Con Groq, `e2e:poc` usa
-> aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock.
+> aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock. Al terminar, vuelve a Groq con
+> `docker compose up -d`.
 
 | Nivel | Qué cubre |
 |---|---|

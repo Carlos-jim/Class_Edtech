@@ -10,9 +10,14 @@ import org.junit.jupiter.api.Test;
 class SpeechConfigTests {
 
     @Test
-    void mockIsTheDefaultProvider() {
-        assertThat(SpeechConfig.create(null, groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
-        assertThat(SpeechConfig.create("  ", groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
+    void groqIsTheDefaultProvider() {
+        assertThat(SpeechConfig.create(null, groq("gsk_test"))).isInstanceOf(GroqWhisperAdapter.class);
+        assertThat(SpeechConfig.create("  ", groq("gsk_test"))).isInstanceOf(GroqWhisperAdapter.class);
+    }
+
+    @Test
+    void mockIsOnlyUsedWhenExplicitlySelected() {
+        assertThat(SpeechConfig.create("mock", groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
     }
 
     @Test

@@ -39,9 +39,9 @@ services:
       DB_USER: ${DB_USER:-tutor}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (openssl rand -base64 48)}
-      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
-      STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-mock}}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-groq}}
+      GROQ_API_KEY: ${GROQ_API_KEY:?Define GROQ_API_KEY en .env (clave gratuita en https://console.groq.com/keys)}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
       RATE_LIMIT_LOGIN_PER_MINUTE: ${RATE_LIMIT_LOGIN_PER_MINUTE:-20}
       RATE_LIMIT_QUESTIONS_PER_MINUTE: ${RATE_LIMIT_QUESTIONS_PER_MINUTE:-15}

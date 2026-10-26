@@ -13,10 +13,14 @@ class LlmConfigTests {
     static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
-    void mockIsTheDefaultProvider() {
-        assertThat(LlmConfig.create(null, groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
+    void groqIsTheDefaultProvider() {
+        assertThat(LlmConfig.create(null, groq("gsk_test"), JSON)).isInstanceOf(ResilientLlmPort.class);
+        assertThat(LlmConfig.create("", groq("gsk_test"), JSON)).isInstanceOf(ResilientLlmPort.class);
+    }
+
+    @Test
+    void mockIsOnlyUsedWhenExplicitlySelected() {
         assertThat(LlmConfig.create(" MOCK ", groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
-        assertThat(LlmConfig.create("", groq(""), JSON)).isInstanceOf(MockLlmAdapter.class);
     }
 
     @Test
@@ -29,7 +33,7 @@ class LlmConfigTests {
         assertThatThrownBy(() -> LlmConfig.create("groq", groq(" "), JSON))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("GROQ_API_KEY")
-                .hasMessageContaining("LLM_PROVIDER=groq").hasMessageContaining("'mock'");
+                .hasMessageContaining("LLM_PROVIDER=groq").hasMessageContaining("console.groq.com/keys");
     }
 
     @Test

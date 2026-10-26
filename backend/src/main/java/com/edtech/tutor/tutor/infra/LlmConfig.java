@@ -27,10 +27,10 @@ class LlmConfig {
     }
 
     static LlmPort create(String provider, GroqProperties groq, ObjectMapper json) {
-        var selected = provider == null || provider.isBlank() ? "mock" : provider.strip().toLowerCase(Locale.ROOT);
+        var selected = provider == null || provider.isBlank() ? "groq" : provider.strip().toLowerCase(Locale.ROOT);
         return switch (selected) {
             case "mock" -> {
-                log.info("Tutor IA: proveedor MOCK (sin clave, respuestas simuladas)");
+                log.warn("Tutor IA: proveedor MOCK (respuestas simuladas, solo para tests automáticos)");
                 yield new MockLlmAdapter();
             }
             case "groq" -> {

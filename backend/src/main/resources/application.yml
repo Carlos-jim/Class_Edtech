@@ -49,12 +49,12 @@ app:
 
 tutor:
   llm:
-    # mock (por defecto, sin clave) | groq
-    provider: ${LLM_PROVIDER:mock}
+    # groq (por defecto, requiere GROQ_API_KEY) | mock (solo tests automáticos: respuestas deterministas)
+    provider: ${LLM_PROVIDER:groq}
 
 speech:
-  # mock | groq (por defecto, el mismo proveedor que el tutor)
-  provider: ${STT_PROVIDER:${LLM_PROVIDER:mock}}
+  # groq | mock (por defecto, el mismo proveedor que el tutor)
+  provider: ${STT_PROVIDER:${LLM_PROVIDER:groq}}
   max-audio-size: 5MB
 
 groq:

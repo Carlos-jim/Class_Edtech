@@ -9,16 +9,15 @@ docker compose exec -T postgres psql -U tutor -d tutor -c "DELETE FROM conversat
 
 - Navegador con permiso de micrófono y altavoz (Chrome o Edge recomendados).
 - Pestañas listas: la app, el repositorio en GitHub (pestaña *Actions* con el último CI en verde) y `docs/DECISIONS.md`.
-- Opcional: `LLM_PROVIDER=groq` + `GROQ_API_KEY` en `.env` para enseñar el modelo real (si falla la red, volver a
-  `mock`: la demo no depende de servicios externos).
+- `GROQ_API_KEY` en `.env` (obligatoria: el tutor y la voz usan Groq). Comprobar antes que hay red hacia Groq.
 
 ## 1. Contexto (1 min)
 
 "POC de un LMS con tutor de IA. Lo importante: el tutor responde **solo con la lección**, por texto o voz, la
 conversación se conserva, y el acceso está protegido de verdad en el backend."
 
-Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (mock o
-Groq por configuración), PostgreSQL, todo en Docker.
+Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (Groq en la
+aplicación; un adaptador simulado para los tests), PostgreSQL, todo en Docker.
 
 ## 2. Acceso y contenido — requisitos 01 y 02 (1,5 min)
 
@@ -43,7 +42,6 @@ Como Ana, en *Métodos HTTP*:
 2. Preguntar en voz alta «¿Qué diferencia hay entre PUT y PATCH?» → *Detener*.
 3. *Transcribiendo…* → el texto aparece **editable**: corregir algo y pulsar Intro.
 4. La respuesta se lee en voz alta; enseñar *Escuchar/Detener* en otra respuesta.
-   - Con el mock la transcripción es siempre «¿Para qué sirve POST?»: decirlo y editarla en directo.
 
 ## 5. Continuidad — requisito 05 (0,5 min)
 
@@ -51,11 +49,10 @@ Recargar la página (o salir y volver a entrar): la conversación sigue. Cambiar
 
 ## 6. Estados y recuperación de errores — requisito 06 (1,5 min)
 
-1. Pregunta con `#simular-fallo` → *El tutor no está disponible*; la pregunta **sigue en el cuadro**; *Reintentar*
-   (quitando la etiqueta) funciona.
-2. DevTools → *Network → Offline* → enviar → mensaje de conexión, nada se pierde → volver *Online* → *Reintentar*.
-3. Bloquear el micrófono en el candado del navegador → pulsar micrófono → mensaje claro y *Escribir en su lugar*.
-4. Mencionar: retry + circuit breaker con el proveedor real, rate limiting (429).
+1. DevTools → *Network → Offline* → enviar → mensaje de conexión, la pregunta **sigue en el cuadro** → volver
+   *Online* → *Reintentar*.
+2. Bloquear el micrófono en el candado del navegador → pulsar micrófono → mensaje claro y *Escribir en su lugar*.
+3. Mencionar: retry + circuit breaker con el proveedor real, rate limiting (429).
 
 ## 7. Calidad y cierre (1,5 min)
 

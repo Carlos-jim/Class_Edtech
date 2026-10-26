@@ -17,7 +17,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 
 | Patrón | Dónde | Para qué |
 |---|---|---|
-| Ports & Adapters | `LlmPort`, `TranscriptionPort` | El dominio no depende del proveedor; el mock permite tests, CI y demo sin claves |
+| Ports & Adapters | `LlmPort`, `TranscriptionPort` | El dominio no depende del proveedor; el mock permite tests y CI deterministas, sin claves |
 | Strategy + Factory | `LlmConfig`, `SpeechConfig` | Elegir proveedor por configuración (`mock` / `groq`) y fallar al arrancar si falta la clave |
 | Adapter | `GroqLlmAdapter`, `GroqWhisperAdapter`; `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
 | Decorator | `ResilientLlmPort` | Añadir retry y circuit breaker a cualquier `LlmPort` sin modificarlo |
@@ -55,9 +55,10 @@ enseña insignia + bloque «De la lección: …»; así el indicador no depende 
 lección se declaran como datos; se neutralizan las etiquetas delimitadoras en cualquier texto para que nadie pueda
 "cerrar" el bloque. Un LLM puede seguir equivocándose: ver límites.
 
-**Mock determinista por defecto.** Busca la sección de la lección con más palabras clave de la pregunta y, si no hay
-coincidencias, responde `grounded=false`. Permite ejecutar la demo, los tests y la CI sin claves ni coste, y simular
-una caída (`#simular-fallo`) para enseñar la recuperación de errores.
+**Groq por defecto; mock solo para tests.** La aplicación usa Groq y no arranca sin `GROQ_API_KEY`. El mock
+determinista (`LLM_PROVIDER=mock`) busca la sección de la lección con más palabras clave de la pregunta y, si no hay
+coincidencias, responde `grounded=false`; existe para que los tests y la CI sean reproducibles, sin red ni cuota, y
+puedan simular una caída (`#simular-fallo`).
 
 **Groq con `RestClient` en lugar de Spring AI.** Ya existe el puerto propio, así que la abstracción de Spring AI sobraba;
 además su autoconfiguración exige clave al arrancar (incompatible con el modo mock) y se quería control explícito de
