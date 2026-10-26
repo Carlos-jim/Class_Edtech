@@ -159,7 +159,7 @@ adaptadores: **cambiar de proveedor es solo editar `.env`**.
 3. `docker compose up -d` (recrea el backend con la nueva configuración).
 
 **Relevo entre modelos.** `GEMINI_MODEL` y `GEMINI_TRANSCRIPTION_MODEL` admiten varios modelos separados por comas
-(por defecto, tres *lite*): si el primero no responde en 4 s se pide también al siguiente, y gana el primero que llega.
+(por defecto, tres *lite*): si el primero no responde en 2 s se pide también al siguiente, y gana el primero que llega.
 Cada modelo tiene su propia cola en el plan gratuito, así que recorta mucho las esperas: en una prueba real de 6
 preguntas, con relevo todas respondieron en 5–10 s; con un solo modelo, 2 tardaron 25–31 s y las otras 4 fallaron. Si
 una respuesta tarda más de 8 s, la interfaz lo indica.
@@ -167,6 +167,12 @@ una respuesta tarda más de 8 s, la interfaz lo indica.
 Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `CEREBRAS_MODEL`, `GROQ_MODEL`, etc. Las claves solo viven en el
 backend. El navegador convierte cada grabación a **WAV 16 kHz mono** antes de subirla (≈ 1,9 MB por minuto): es el
 formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
+
+> **Tiempos de respuesta: es normal que a veces tarde unos segundos de más.** El plan gratuito de Gemini no garantiza
+> velocidad: Google limita las peticiones por minuto y, en horas de mucha demanda, sus modelos gratuitos responden
+> más despacio o devuelven 503. Lo habitual es una respuesta en 3–10 s, pero en picos puede llegar a 15–20 s (o fallar
+> y ofrecer *Reintentar*). No es un fallo de la aplicación ni de tu equipo: es la limitación del plan gratuito, que se
+> eligió porque no pide tarjeta. Con un plan de pago, o un proveedor más rápido como Cerebras (pide tarjeta), bajaría.
 
 > En el plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos: no envíes datos
 > personales. Si ves 503 *high demand*, es un pico temporal de Google: el backend reintenta y la UI ofrece *Reintentar*.

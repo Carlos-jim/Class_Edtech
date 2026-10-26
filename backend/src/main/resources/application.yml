@@ -71,7 +71,7 @@ ai:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta/openai
     # Los "lite" responden en 1-3 s y sufren menos picos de demanda (503) en el plan gratuito.
-    # Varios modelos separados por comas = relevo: si uno no responde en 4 s se pide también al siguiente y gana
+    # Varios modelos separados por comas = relevo: si uno no responde en 2 s se pide también al siguiente y gana
     # el primero (cada modelo tiene su propia cola en el plan gratuito).
     chat-model: ${GEMINI_MODEL:gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}
     transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest}

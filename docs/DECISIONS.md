@@ -67,13 +67,15 @@ arranca si falta la clave del proveedor elegido y el mensaje dice cuál y dónde
 **Relevo entre modelos (hedged requests) contra la latencia del plan gratuito.** Medido desde la red del
 desarrollador, Gemini *lite* tardaba de forma muy irregular (de 1,5 s a más de 40 s incluso para «hola»), y con un solo
 modelo el reintento al mismo modelo duplicaba la espera (20 s + 20 s → 503) y abría el circuit breaker. Como cada modelo
-tiene su propia cola, `Hedging` pide la respuesta al primero y, si en 4 s no ha contestado, también al siguiente (sin
+tiene su propia cola, `Hedging` pide la respuesta al primero y, si en 2 s no ha contestado, también al siguiente (sin
 cancelar el anterior); gana el primero y el resto se cancela (hilos virtuales). Plazo total: 25 s. En una prueba real de
 6 preguntas: con relevo, 6/6 en 5–10 s; con un solo modelo, 2/6 en 25–31 s y 4 fallos. El coste es alguna petición
 extra al proveedor, dentro de la cuota gratuita por modelo. Se aplica al chat y a la transcripción, y la interfaz avisa si
 algo tarda más de 8 s. Se evaluó **Cerebras** (`LLM_PROVIDER=cerebras`), especializado en inferencia muy rápida: queda como proveedor
 opcional (configurado y probado con tests), pero **no por defecto**, porque su alta pide vincular una tarjeta y la POC
 debe funcionar sin servicios de pago ni tarjetas. Gemini con relevo cumple esa condición.
+El escalón empezó en 4 s; en uso real desde otro equipo, con los tres modelos lentos, las respuestas llegaban a ~18 s,
+así que se bajó a 2 s: el relevo entra antes, a cambio de alguna petición extra más (los *lite* suelen responder en 1–3 s).
 
 **Voz con Gemini: audio por el chat y WAV en el navegador.** Gemini no ofrece `/audio/transcriptions`; su API
 compatible acepta audio dentro del chat (`input_audio`), pero solo WAV o MP3 (rechaza el webm de Chrome/Edge y el ogg de

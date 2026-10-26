@@ -20,7 +20,11 @@ import java.util.function.Supplier;
  */
 public final class Hedging {
 
-    public static final Duration DEFAULT_STAGGER = Duration.ofSeconds(4);
+    /**
+     * Con 2 s el relevo entra en cuanto un modelo se atasca (los lite suelen responder en 1-3 s) sin duplicar casi
+     * nunca las peticiones rápidas. Con 4 s una respuesta lenta llegaba a ~18 s en el plan gratuito.
+     */
+    public static final Duration DEFAULT_STAGGER = Duration.ofSeconds(2);
     public static final Duration DEFAULT_DEADLINE = Duration.ofSeconds(25);
 
     /** Hilos virtuales: esperar a una red lenta no consume hilos de plataforma. Compartido y nunca se cierra. */
