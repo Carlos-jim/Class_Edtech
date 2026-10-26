@@ -42,7 +42,8 @@ class MockLlmAdapterTests {
         var answer = adapter.answer(prompt("¿Para qué sirve POST?"));
 
         assertThat(answer.grounded()).isTrue();
-        assertThat(answer.citation()).isNotBlank().containsIgnoringCase("crear un nuevo recurso");
+        // Como Groq, cita el Markdown literal: el frontend se encarga de mostrarlo con formato.
+        assertThat(answer.citation()).isNotBlank().contains("**crear un nuevo recurso**");
         assertThat(answer.answer())
                 .startsWith("Según la lección «Métodos HTTP»:")
                 .contains("crear un nuevo recurso", "no es idempotente")

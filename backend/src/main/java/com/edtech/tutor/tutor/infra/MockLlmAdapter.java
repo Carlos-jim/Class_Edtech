@@ -94,10 +94,11 @@ public class MockLlmAdapter implements LlmPort {
 
     /**
      * Elige un trozo contiguo del markdown original de la lección (para que {@link CitationVerifier} lo acepte).
+     * Conserva negritas, cursivas y código, como hace el modelo real al citar literalmente.
      */
     static String citationFrom(String lessonContent, String section, Set<String> keywords) {
         var plain = toPlainText(section);
-        for (var sentence : plain.split("(?<=\\.\\s)|(?<=\\n)")) {
+        for (var sentence : toQuotableMarkdown(section).split("(?<=\\.\\s)|(?<=\\n)")) {
             var candidate = sentence.strip();
             if (candidate.length() >= CitationVerifier.MIN_CITATION_CHARS
                     && CitationVerifier.normalize(lessonContent).contains(CitationVerifier.normalize(candidate))) {
@@ -117,7 +118,7 @@ public class MockLlmAdapter implements LlmPort {
                     end++;
                 }
                 var slice = lessonContent.substring(start, end).strip();
-                slice = slice.replaceAll("^#+\\s*", "").replace("**", "").replace("`", "");
+                slice = slice.replaceAll("^#+\\s*", "");
                 if (slice.length() >= CitationVerifier.MIN_CITATION_CHARS) {
                     return truncate(slice, MAX_CITATION_CHARS);
                 }
@@ -136,6 +137,13 @@ public class MockLlmAdapter implements LlmPort {
         // Aproximación: misma posición relativa en el texto original
         var ratio = haystack.length() == 0 ? 0 : (double) at / Math.max(h.length(), 1);
         return Math.min(haystack.length() - 1, (int) (ratio * haystack.length()));
+    }
+
+    /** Prosa de la sección con su formato en línea: sin bloques de código, tablas ni marcas de título. */
+    private static String toQuotableMarkdown(String markdownSection) {
+        var text = CODE_BLOCK.matcher(markdownSection).replaceAll("");
+        text = TABLE_ROW.matcher(text).replaceAll("");
+        return text.replaceAll("(?m)^#{1,6}\\s*", "").replaceAll("\\n{2,}", "\n").strip();
     }
 
     private static String toPlainText(String markdownSection) {

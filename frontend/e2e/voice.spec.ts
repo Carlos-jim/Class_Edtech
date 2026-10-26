@@ -108,3 +108,28 @@ test.describe('Lectura en voz alta sin voces en el navegador', () => {
     await expect(page.getByRole('button', { name: 'Escuchar respuesta' })).toBeVisible();
   });
 });
+
+test.describe('Navegador sin síntesis de voz', () => {
+  test.beforeEach(async ({ page, signInAs }) => {
+    resetConversations();
+    // Como Firefox/LibreWolf con la síntesis desactivada: la API no existe.
+    await page.addInitScript(() => {
+      delete (Window.prototype as unknown as { speechSynthesis?: unknown }).speechSynthesis;
+      delete (window as unknown as { speechSynthesis?: unknown }).speechSynthesis;
+    });
+    await signInAs('ana');
+  });
+
+  test('el botón Escuchar sigue visible y explica por qué no puede leer la respuesta', async ({ page, lessonPage }) => {
+    await lessonPage.goto(LESSON_2);
+    expect(await page.evaluate(() => 'speechSynthesis' in window)).toBe(false);
+
+    await lessonPage.askAndAwait('¿Para qué sirve POST?', 1);
+    await page.getByRole('button', { name: 'Escuchar respuesta' }).click();
+
+    await expect(lessonPage.error).toContainText('Este navegador no permite leer respuestas en voz alta');
+    await lessonPage.error.getByRole('button', { name: 'Entendido' }).click();
+    await expect(lessonPage.error).toHaveCount(0);
+    await expect(lessonPage.answer(0)).toContainText('crear un nuevo recurso');
+  });
+});

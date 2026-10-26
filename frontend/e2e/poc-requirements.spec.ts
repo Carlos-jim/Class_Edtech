@@ -62,6 +62,9 @@ test.describe('POC · requisitos del enunciado (01–06)', () => {
     const citation = page.getByTestId('tutor-citation').first();
     await expect(citation).toBeVisible();
     await expect(citation).toContainText(/POST|recurso|crear|colección/i);
+    // La cita es Markdown literal de la lección: se ve con formato, nunca con los asteriscos.
+    await expect(citation).not.toContainText('**');
+    await expect(citation.locator('strong').first()).toBeVisible();
 
     await lessonPage.askAndAwait('¿Cuál es la capital de Francia?', 2);
     await expect(lessonPage.badgeOf(1)).toContainText('Sin información suficiente en la lección');
