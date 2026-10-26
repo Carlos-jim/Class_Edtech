@@ -167,7 +167,11 @@ export class TutorStore {
         this.transition('idle');
         // Conversación por voz: la respuesta se lee en voz alta (también hay botón para escucharla de nuevo).
         if (question.inputMode === 'VOICE') {
-          this.speech.speak(answer.id, answer.content);
+          if (this.speechSupported) {
+            this.speech.speak(answer.id, answer.content);
+          } else {
+            this.warnSpeechUnsupported();
+          }
         }
       },
       error: (error: unknown) => {
@@ -226,10 +230,19 @@ export class TutorStore {
   }
 
   toggleSpeech(message: ChatMessage): void {
+    if (!this.speechSupported) {
+      this.warnSpeechUnsupported();
+      return;
+    }
     if (this.error()?.kind === 'speech') {
       this.error.set(null);
     }
     this.speech.toggle(message.id, message.content);
+  }
+
+  /** Sin Web Speech API (desactivada en algunos Firefox/LibreWolf o navegadores Flatpak) no hay nada que reintentar. */
+  private warnSpeechUnsupported(): void {
+    this.error.set({ kind: 'speech', code: 'SPEECH_UNSUPPORTED', message: SPEECH_UNSUPPORTED, actionLabel: 'Entendido' });
   }
 
   private transcribe(audio: Blob): void {
@@ -321,6 +334,10 @@ const STATUS_TEXT: Readonly<Record<TutorPhase, string>> = {
 const SPEECH_UNAVAILABLE =
   'Tu navegador no ha podido leer la respuesta en voz alta: no tiene voces de síntesis disponibles. ' +
   'Prueba con Chrome, Edge o Firefox (en Linux necesitan speech-dispatcher). La respuesta sigue disponible por escrito.';
+
+const SPEECH_UNSUPPORTED =
+  'Este navegador no permite leer respuestas en voz alta (la síntesis de voz no está disponible o está desactivada). ' +
+  'Prueba con Chrome o Edge. La respuesta sigue disponible por escrito.';
 
 const MICROPHONE_MESSAGES: Readonly<Record<MicrophoneErrorKind, string>> = {
   'permission-denied':

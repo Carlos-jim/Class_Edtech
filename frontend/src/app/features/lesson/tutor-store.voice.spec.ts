@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { askResponse } from '../../../testing/chat';
+import { askResponse, tutorMessage } from '../../../testing/chat';
 import { TranscriptionApi } from '../../core/api/transcription-api';
 import { TutorApi } from '../../core/api/tutor-api';
 import { AudioRecorder, MicrophoneError } from '../../core/voice/audio-recorder';
@@ -31,7 +31,7 @@ describe('TutorStore · voz', () => {
   let store: TutorStore;
 
   beforeEach(() => {
-    [recorder.start, recorder.stop, recorder.cancel, transcribe, ask, speech.speak, speech.stop].forEach((fn) => fn.mockReset());
+    [recorder.start, recorder.stop, recorder.cancel, transcribe, ask, speech.speak, speech.stop, speech.toggle].forEach((fn) => fn.mockReset());
     speech.failure.set(null);
     recorder.start.mockResolvedValue(undefined);
     recorder.stop.mockResolvedValue(audio);
@@ -171,5 +171,44 @@ describe('TutorStore · voz', () => {
 
     expect(store.error()).toBeNull();
     expect(speech.speak).toHaveBeenCalledWith('a1', 'POST crea recursos.');
+  });
+
+  describe('without speech synthesis in the browser', () => {
+    beforeEach(() => {
+      speech.isSupported = false;
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          TutorStore,
+          { provide: TutorApi, useValue: { history: () => of([]), ask } },
+          { provide: TranscriptionApi, useValue: { transcribe } },
+          { provide: AudioRecorder, useValue: recorder },
+          { provide: SpeechPlayer, useValue: speech },
+        ],
+      });
+      store = TestBed.inject(TutorStore);
+      store.load('l2');
+    });
+
+    afterEach(() => {
+      speech.isSupported = true;
+    });
+
+    it('explains why the answer cannot be listened to', () => {
+      store.toggleSpeech(tutorMessage('POST crea recursos.'));
+
+      expect(store.error()).toMatchObject({ kind: 'speech', code: 'SPEECH_UNSUPPORTED', actionLabel: 'Entendido' });
+      expect(speech.toggle).not.toHaveBeenCalled();
+    });
+
+    it('warns instead of staying silent after a voice question', async () => {
+      transcribe.mockReturnValue(of({ text: '¿Para qué sirve POST?' }));
+      ask.mockReturnValue(of(askResponse('¿Para qué sirve POST?', 'POST crea recursos.')));
+      await recordAndStop();
+      store.send();
+
+      expect(speech.speak).not.toHaveBeenCalled();
+      expect(store.error()).toMatchObject({ code: 'SPEECH_UNSUPPORTED' });
+    });
   });
 });

@@ -76,7 +76,7 @@ import { TutorStore } from './tutor-store';
 
         @for (message of store.messages(); track message.id) {
           <app-chat-message [message]="message">
-            @if (message.role === 'TUTOR' && store.speechSupported) {
+            @if (message.role === 'TUTOR') {
               @let speaking = store.speakingId() === message.id;
               <button
                 type="button"
