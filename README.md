@@ -16,27 +16,89 @@ conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la l
 
 ---
 
-## 1. Puesta en marcha rápida (Docker)
+## 0. Requisito: instalar Docker
 
-Requisitos: Docker con Docker Compose y una **clave de Groq** (gratuita, sin tarjeta): https://console.groq.com/keys
+La aplicación completa (base de datos, backend y frontend) se ejecuta con **Docker**; no hace falta instalar Java
+ni Node. Comprueba si ya lo tienes:
 
 ```bash
-cp .env.example .env
-sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48)|" .env   # o edítalo a mano (≥ 32 caracteres)
-sed -i.bak "s|^GROQ_API_KEY=.*|GROQ_API_KEY=gsk_TU_CLAVE|" .env              # pega aquí tu clave de Groq
-docker compose up --build
+docker compose version     # debe mostrar "Docker Compose version v2.x" o superior
 ```
 
-En **Windows** (Docker Desktop, PowerShell; desde la raíz del repo):
+Si no está instalado:
+
+**Windows 10/11** — Docker Desktop con WSL 2 (PowerShell **como administrador**):
 
 ```powershell
-$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
-$groqKey = 'gsk_TU_CLAVE'   # pega aquí tu clave de Groq
-$envText = [IO.File]::ReadAllText("$PWD\.env.example") -replace '(?m)^JWT_SECRET=[^\r\n]*', ("JWT_SECRET=" + [Convert]::ToBase64String($b))
-$envText = $envText -replace '(?m)^GROQ_API_KEY=[^\r\n]*', ("GROQ_API_KEY=" + $groqKey)
-[IO.File]::WriteAllText("$PWD\.env", $envText)
-docker compose up --build
+wsl --install                                   # activa WSL 2 (reinicia si lo pide)
+winget install -e --id Docker.DockerDesktop     # o descárgalo de https://www.docker.com/products/docker-desktop/
 ```
+
+Abre **Docker Desktop** y espera a que indique *Engine running*. Docker Desktop debe estar abierto siempre que uses
+la aplicación (si no, verás *failed to connect to the docker API … dockerDesktopLinuxEngine*).
+
+**macOS** — Docker Desktop:
+
+```bash
+brew install --cask docker      # o descárgalo de https://www.docker.com/products/docker-desktop/
+open -a Docker                  # espera a que el icono de la ballena indique que está en marcha
+```
+
+**Linux (Ubuntu, Debian, Fedora…)** — Docker Engine con el script oficial:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER   # para usar docker sin sudo; cierra sesión y vuelve a entrar
+```
+
+Verifica la instalación con `docker run --rm hello-world`.
+
+## 1. Puesta en marcha
+
+Necesitas una **clave de Groq** (gratuita, sin tarjeta): https://console.groq.com/keys
+
+### Primera vez (solo una vez)
+
+**1. Crear la configuración (`.env`).** El script pide la clave de Groq, genera el secreto JWT y crea `.env`.
+Si `.env` ya existe **no lo toca**, así que ejecutarlo de nuevo es seguro.
+
+```bash
+./scripts/setup.sh                                          # Linux / macOS
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1  # Windows (PowerShell, en la raíz del repo)
+```
+
+<details>
+<summary>Alternativa manual</summary>
+
+Copia `.env.example` a `.env` **una sola vez** y edita en `.env`: `GROQ_API_KEY` (tu clave) y `JWT_SECRET` (una
+cadena aleatoria de al menos 32 caracteres, p. ej. la salida de `openssl rand -base64 48`).
+</details>
+
+**2. Construir y arrancar** (la primera vez tarda unos minutos: descarga imágenes y compila):
+
+```bash
+docker compose up -d --build
+```
+
+### Las siguientes veces
+
+`.env` ya está creado y se reutiliza: **no hace falta volver a configurarlo** (no vuelvas a copiar `.env.example`,
+sobrescribiría tu clave). Solo tienes que arrancar:
+
+| Quiero… | Comando |
+|---|---|
+| Arrancar la aplicación | `docker compose up -d` |
+| Pararla (los datos se conservan) | `docker compose stop` (o `docker compose down`) |
+| Ver los logs del backend | `docker compose logs -f backend` |
+| Aplicar cambios tras actualizar el código (`git pull`) | `docker compose up -d --build` |
+| Cambiar la clave u otra opción | Edita `.env` y ejecuta `docker compose up -d` (recrea lo necesario) |
+| Empezar de cero (**borra** conversaciones y BD) | `docker compose down -v` |
+
+> En Windows y macOS, abre Docker Desktop antes de ejecutar estos comandos.
 
 Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a las dos cuentas de prueba:
 
@@ -76,8 +138,9 @@ en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
 ## 3. IA con Groq
 
 1. Crea una clave en https://console.groq.com/keys (plan gratuito).
-2. Ponla en `.env`: `GROQ_API_KEY=gsk_...` (la misma clave sirve para el tutor y para la voz).
-3. `docker compose up --build`.
+2. Ponla en `.env`: `GROQ_API_KEY=gsk_...` (la misma clave sirve para el tutor y para la voz). El script de
+   [configuración inicial](#primera-vez-solo-una-vez) ya lo hace por ti.
+3. `docker compose up -d` (si cambias la clave con la app en marcha, este comando recrea el backend).
 
 Modelos: `openai/gpt-oss-120b` para el tutor (`GROQ_MODEL`; reemplazo actual del Llama 3.3 retirado en el plan
 gratuito de Groq) y `whisper-large-v3-turbo` para la voz. La clave solo vive en el backend; si falta, la aplicación
@@ -91,7 +154,7 @@ no arranca y explica cómo resolverlo.
 Requisitos: JDK 25, Node 24 LTS (`frontend/.nvmrc`; Angular 22 no admite Node 25) y Docker para PostgreSQL.
 
 ```bash
-cp .env.example .env               # define DB_PASSWORD y JWT_SECRET
+./scripts/setup.sh                 # solo la primera vez (crea .env; si ya existe no lo toca)
 docker compose up -d postgres
 
 cd backend && ./mvnw spring-boot:run          # http://localhost:8080 (lee ../.env)
@@ -181,6 +244,7 @@ responde 404, igual que uno inexistente.
 ├── backend/              Spring Boot (auth, catalog, tutor, speech, shared) + Flyway (db/migration, db/seed)
 ├── frontend/             Angular (core, features, shared) + e2e/ (Playwright) + nginx/
 ├── docs/                 DECISIONS.md · DEMO.md · DESIGN.md
+├── scripts/              setup.sh · setup.ps1 (crean .env la primera vez)
 ├── .github/workflows/    CI
 ├── docker-compose.yml    PostgreSQL + backend + frontend
 └── .env.example          Variables de entorno (sin secretos)

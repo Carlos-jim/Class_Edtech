@@ -1,0 +1,4 @@
+# Scripts con el final de línea que espera cada sistema (aunque se clone en Windows con autocrlf).
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+.env.example text eol=lf
