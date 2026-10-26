@@ -1,4 +1,4 @@
-package com.edtech.tutor.tutor.infra.groq;
+package com.edtech.tutor.tutor.infra.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,7 +11,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withTooManyRequests;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
-import com.edtech.tutor.shared.groq.GroqProperties;
+import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.MessageRole;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
@@ -28,20 +28,20 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
-class GroqLlmAdapterTests {
+class OpenAiCompatibleLlmAdapterTests {
 
-    static final String URL = "https://groq.test/openai/v1/chat/completions";
-    static final GroqProperties PROPS = new GroqProperties("test-key", "https://groq.test/openai/v1",
+    static final String URL = "https://ai.test/v1/chat/completions";
+    static final OpenAiCompatibleProperties PROPS = new OpenAiCompatibleProperties("test-key", "https://ai.test/v1",
             "llama-test", "whisper-test", 0.2, 600, Duration.ofSeconds(1), Duration.ofSeconds(2));
 
     MockRestServiceServer server;
-    GroqLlmAdapter adapter;
+    OpenAiCompatibleLlmAdapter adapter;
 
     @BeforeEach
     void setUp() {
         var builder = RestClient.builder().baseUrl(PROPS.baseUrl());
         server = MockRestServiceServer.bindTo(builder).build();
-        adapter = new GroqLlmAdapter(builder.build(), PROPS, JsonMapper.builder().build());
+        adapter = new OpenAiCompatibleLlmAdapter(builder.build(), PROPS, JsonMapper.builder().build(), "Mistral");
     }
 
     @Test

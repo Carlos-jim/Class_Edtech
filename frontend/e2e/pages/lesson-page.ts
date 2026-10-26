@@ -42,7 +42,7 @@ export class LessonPage {
   }
 
   /**
-   * Envía la pregunta y espera N respuestas del tutor. Si Groq cae (429/400), pulsa Reintentar
+   * Envía la pregunta y espera N respuestas del tutor. Si el proveedor de IA cae (429/400), pulsa Reintentar
    * hasta {@code retries} veces antes de fallar.
    */
   async askAndAwait(question: string, expectedTutorCount: number, retries = 2): Promise<void> {

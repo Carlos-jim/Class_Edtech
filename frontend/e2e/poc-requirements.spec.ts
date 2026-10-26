@@ -1,7 +1,7 @@
 /**
  * E2E alineados al enunciado de la evaluación técnica (requisitos 01–06).
  *
- * Pensados para el stack Docker con IA real (Groq). Las aserciones del tutor son
+ * Pensados para el stack Docker con IA real (Mistral o Groq). Las aserciones del tutor son
  * semánticas (insignia grounded / contenido relacionado), no frases fijas del mock.
  *
  *   docker compose up -d --build
@@ -139,7 +139,7 @@ test.describe('POC · requisitos del enunciado (01–06)', () => {
   test('06 Experiencia: estados visibles y recuperación ante fallos', async ({ page, lessonPage }) => {
     await lessonPage.goto(LESSON_2);
 
-    // Fallo del servicio de IA → reintento con éxito (stub): valida la UX sin depender de la cuota de Groq.
+    // Fallo del servicio de IA → reintento con éxito (stub): valida la UX sin depender de la cuota del proveedor.
     let postCalls = 0;
     await page.route('**/api/lessons/*/messages', async (route) => {
       if (route.request().method() !== 'POST') {

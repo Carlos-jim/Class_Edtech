@@ -49,24 +49,35 @@ app:
 
 tutor:
   llm:
-    # groq (por defecto, requiere GROQ_API_KEY) | mock (solo tests automáticos: respuestas deterministas)
-    provider: ${LLM_PROVIDER:groq}
+    # mistral (por defecto, MISTRAL_API_KEY) | groq (GROQ_API_KEY) | mock (solo tests automáticos)
+    provider: ${LLM_PROVIDER:mistral}
 
 speech:
-  # groq | mock (por defecto, el mismo proveedor que el tutor)
-  provider: ${STT_PROVIDER:${LLM_PROVIDER:groq}}
+  # mistral | groq | mock (por defecto, el mismo proveedor que el tutor)
+  provider: ${STT_PROVIDER:${LLM_PROVIDER:mistral}}
   max-audio-size: 5MB
 
-groq:
-  api-key: ${GROQ_API_KEY:}
-  base-url: https://api.groq.com/openai/v1
-  chat-model: ${GROQ_MODEL:openai/gpt-oss-120b}
-  transcription-model: ${GROQ_TRANSCRIPTION_MODEL:whisper-large-v3-turbo}
-  temperature: 0.2 # baja: respuestas fieles a la lección
-  # gpt-oss razona antes de responder: necesita holgura o el JSON sale truncado / la API rechaza
-  max-tokens: 1500
-  connect-timeout: 3s
-  read-timeout: 45s
+# Proveedores con API compatible con OpenAI (mismos adaptadores; se elige con LLM_PROVIDER / STT_PROVIDER).
+ai:
+  mistral:
+    api-key: ${MISTRAL_API_KEY:}
+    base-url: https://api.mistral.ai/v1
+    chat-model: ${MISTRAL_MODEL:mistral-small-latest}
+    transcription-model: ${MISTRAL_TRANSCRIPTION_MODEL:voxtral-mini-latest}
+    temperature: 0.2 # baja: respuestas fieles a la lección
+    max-tokens: 1000
+    connect-timeout: 3s
+    read-timeout: 45s
+  groq:
+    api-key: ${GROQ_API_KEY:}
+    base-url: https://api.groq.com/openai/v1
+    chat-model: ${GROQ_MODEL:openai/gpt-oss-120b}
+    transcription-model: ${GROQ_TRANSCRIPTION_MODEL:whisper-large-v3-turbo}
+    temperature: 0.2
+    # gpt-oss razona antes de responder: necesita holgura o el JSON sale truncado / la API rechaza
+    max-tokens: 1500
+    connect-timeout: 3s
+    read-timeout: 45s
 
 server:
   # Detrás de nginx: la IP real del cliente llega en X-Forwarded-For (solo se confía en proxies de red privada).

@@ -2,7 +2,7 @@ package com.edtech.tutor.tutor.domain;
 
 /**
  * Puerto de salida hacia el modelo de lenguaje (arquitectura hexagonal).
- * Implementaciones: MockLlmAdapter (por defecto, sin clave) y GroqLlmAdapter. Se elige por configuración
+ * Implementaciones: MockLlmAdapter (tests) y OpenAiCompatibleLlmAdapter (Mistral, Groq). Se elige por configuración
  * ({@code tutor.llm.provider}), así el dominio no depende de ningún proveedor.
  */
 public interface LlmPort {

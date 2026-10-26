@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * E2E de la interfaz contra el stack real (nginx + backend + PostgreSQL).
  *
  *   Stack Docker:  docker compose up -d --build   →  E2E_BASE_URL=http://localhost:8080 npm run e2e
- *   Solo enunciado: E2E_BASE_URL=http://localhost:8080 npm run e2e:poc   (tolerante a Groq)
+ *   Solo enunciado: E2E_BASE_URL=http://localhost:8080 npm run e2e:poc   (tolerante a la IA real)
  *   Desarrollo:    backend en :8080 + `npm start` →  npm run e2e   (usa http://localhost:4200)
  *
  * Micrófono simulado por Chromium (--use-fake-device-for-media-stream): permite probar la grabación de voz.

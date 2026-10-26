@@ -9,15 +9,16 @@ docker compose exec -T postgres psql -U tutor -d tutor -c "DELETE FROM conversat
 
 - Navegador con permiso de micrófono y altavoz (Chrome o Edge recomendados).
 - Pestañas listas: la app, el repositorio en GitHub (pestaña *Actions* con el último CI en verde) y `docs/DECISIONS.md`.
-- `GROQ_API_KEY` en `.env` (obligatoria: el tutor y la voz usan Groq). Comprobar antes que hay red hacia Groq.
+- `MISTRAL_API_KEY` en `.env` (el tutor y la voz usan Mistral por defecto; Groq es la alternativa con
+  `LLM_PROVIDER=groq`). Comprobar antes que hay red hacia el proveedor elegido (`docker compose logs backend`).
 
 ## 1. Contexto (1 min)
 
 "POC de un LMS con tutor de IA. Lo importante: el tutor responde **solo con la lección**, por texto o voz, la
 conversación se conserva, y el acceso está protegido de verdad en el backend."
 
-Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (Groq en la
-aplicación; un adaptador simulado para los tests), PostgreSQL, todo en Docker.
+Arquitectura en una frase: Angular + Spring Boot, monolito modular, puertos y adaptadores para la IA y la voz (Mistral o
+Groq por configuración; un adaptador simulado para los tests), PostgreSQL, todo en Docker.
 
 ## 2. Acceso y contenido — requisitos 01 y 02 (1,5 min)
 
@@ -58,7 +59,7 @@ Recargar la página (o salir y volver a entrar): la conversación sigue. Cambiar
 
 - GitHub *Actions*: CI con backend, frontend y E2E sobre Docker.
 - Tests: 194 (backend 104, frontend 67, Playwright 23 con micrófono simulado y auditoría de accesibilidad).
-- `docs/DECISIONS.md`: decisiones (sin RAG por tamaño, Groq por coste/latencia, revisión de la transcripción…) y
+- `docs/DECISIONS.md`: decisiones (sin RAG por tamaño, proveedor intercambiable: Mistral por defecto tras el bloqueo de red de Groq, revisión de la transcripción…) y
   límites honestos (grounding decidido por el modelo, JWT en `sessionStorage`, rate limit en memoria).
 
 ## Preguntas probables
@@ -67,7 +68,7 @@ Recargar la página (o salir y volver a entrar): la conversación sigue. Cambiar
 |---|---|
 | ¿Por qué no RAG? | Dos lecciones caben enteras en el contexto; RAG añadiría complejidad sin mejora. Está aislado en `PromptBuilder` para añadirlo. |
 | ¿Cómo evitas que el tutor invente? | Prompt restrictivo + JSON con `grounded` + temperatura baja; es mitigación. Mejora: citar y verificar el fragmento. |
-| ¿Qué pasa si Groq cae? | Timeout, un reintento, circuit breaker; el alumno ve un error con *Reintentar* y no pierde la pregunta. |
+| ¿Qué pasa si el proveedor de IA cae? | Timeout, un reintento, circuit breaker; el alumno ve un error con *Reintentar* y no pierde la pregunta. |
 | ¿Por qué el audio va al backend? | La clave no puede estar en el navegador; Whisper funciona en todos los navegadores (Web Speech API no). |
 | ¿Cómo se prueba la voz automáticamente? | Chromium con micrófono simulado en Playwright y transcripción mock en el backend. |
 | ¿Y si alguien cambia el id en la URL? | 404: la consulta filtra por el alumno del token; tests de IDOR con dos alumnas matriculadas. |

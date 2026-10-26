@@ -1,10 +1,10 @@
-package com.edtech.tutor.tutor.infra.groq;
+package com.edtech.tutor.tutor.infra.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.edtech.tutor.shared.groq.GroqClient;
-import com.edtech.tutor.shared.groq.GroqProperties;
+import com.edtech.tutor.shared.ai.AiProvider;
+import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
 import com.edtech.tutor.tutor.domain.TutorPrompt.LessonContext;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Cliente HTTP real (sockets) contra un servidor local: comprueba cabecera de autenticación y timeout de lectura. */
-class GroqHttpClientTests {
+class OpenAiCompatibleHttpClientTests {
 
     HttpServer server;
     final AtomicReference<String> authorization = new AtomicReference<>();
@@ -36,7 +36,7 @@ class GroqHttpClientTests {
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
-            var body = GroqLlmAdapterTests.completion("{\"answer\":\"Hola\",\"grounded\":true}")
+            var body = OpenAiCompatibleLlmAdapterTests.completion("{\"answer\":\"Hola\",\"grounded\":true}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);
@@ -71,11 +71,11 @@ class GroqHttpClientTests {
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofMillis(1400));
     }
 
-    private GroqLlmAdapter adapter(Duration readTimeout) {
-        var props = new GroqProperties("secret-key",
+    private OpenAiCompatibleLlmAdapter adapter(Duration readTimeout) {
+        var props = new OpenAiCompatibleProperties("secret-key",
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/openai/v1",
                 "llama-test", "whisper-test", 0.2, 600, Duration.ofSeconds(1), readTimeout);
-        return new GroqLlmAdapter(GroqClient.restClient(props), props, JsonMapper.builder().build());
+        return new OpenAiCompatibleLlmAdapter(AiProvider.restClient(props), props, JsonMapper.builder().build(), "Mistral");
     }
 
     private static TutorPrompt prompt() {

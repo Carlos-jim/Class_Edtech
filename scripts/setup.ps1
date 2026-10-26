@@ -8,7 +8,7 @@ Set-Location (Join-Path $PSScriptRoot '..')
 $envPath = Join-Path (Get-Location) '.env'
 
 if (Test-Path $envPath) {
-    Write-Host '✔ .env ya existe: no se modifica (tu clave de Groq se conserva).' -ForegroundColor Green
+    Write-Host '✔ .env ya existe: no se modifica (tu clave se conserva).' -ForegroundColor Green
     Write-Host '  Arranca la aplicación con:  docker compose up -d'
     exit 0
 }
@@ -18,16 +18,16 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host 'Clave de Groq (gratuita, sin tarjeta): https://console.groq.com/keys'
-$secure = Read-Host 'Pega tu clave (gsk_...; no se muestra al escribir)' -AsSecureString
+Write-Host 'Clave de Mistral (gratuita, sin tarjeta): https://console.mistral.ai/api-keys'
+$secure = Read-Host 'Pega tu clave (no se muestra al escribir)' -AsSecureString
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
-    $groqKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim()
+    $apiKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim()
 } finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
 }
-if ($groqKey -notmatch '^gsk_[A-Za-z0-9]+$') {
-    Write-Host '✘ La clave debe empezar por gsk_ y no contener espacios. No se ha creado .env.' -ForegroundColor Red
+if ($apiKey -notmatch '^[A-Za-z0-9_-]{20,}$') {
+    Write-Host '✘ La clave no parece válida (sin espacios, al menos 20 caracteres). No se ha creado .env.' -ForegroundColor Red
     exit 1
 }
 
@@ -38,7 +38,7 @@ $jwtSecret = [Convert]::ToBase64String($bytes)
 
 $text = [IO.File]::ReadAllText((Join-Path (Get-Location) '.env.example'))
 $text = $text -replace '(?m)^JWT_SECRET=[^\r\n]*', "JWT_SECRET=$jwtSecret"
-$text = $text -replace '(?m)^GROQ_API_KEY=[^\r\n]*', "GROQ_API_KEY=$groqKey"
+$text = $text -replace '(?m)^MISTRAL_API_KEY=[^\r\n]*', "MISTRAL_API_KEY=$apiKey"
 # UTF-8 sin BOM: docker compose no admite el BOM al principio del fichero.
 [IO.File]::WriteAllText($envPath, $text, (New-Object System.Text.UTF8Encoding $false))
 

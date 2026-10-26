@@ -1,0 +1,40 @@
+package com.edtech.tutor.shared.ai;
+
+import java.net.http.HttpClient;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+/**
+ * Un proveedor de IA concreto.
+ *
+ * @param id        valor de {@code LLM_PROVIDER} / {@code STT_PROVIDER} (p. ej. {@code mistral})
+ * @param label     nombre para logs y mensajes
+ * @param keyEnvVar variable de entorno de su clave
+ * @param keyUrl    dónde conseguir una clave gratuita
+ * @param settings  conexión y modelos
+ */
+public record AiProvider(String id, String label, String keyEnvVar, String keyUrl, OpenAiCompatibleProperties settings) {
+
+    /** Mensaje accionable si falta la clave: qué variable rellenar y dónde obtenerla. */
+    public String missingKeyMessage(String selectorVar) {
+        return "%s=%s requiere %s: crea una clave gratuita en %s y añádela a .env."
+                .formatted(selectorVar, id, keyEnvVar, keyUrl);
+    }
+
+    /** Cliente HTTP con timeouts explícitos y la clave en la cabecera. */
+    public RestClient restClient() {
+        return restClient(settings);
+    }
+
+    public static RestClient restClient(OpenAiCompatibleProperties settings) {
+        var httpClient = HttpClient.newBuilder().connectTimeout(settings.connectTimeout()).build();
+        var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(settings.readTimeout());
+        return RestClient.builder()
+                .baseUrl(settings.baseUrl())
+                .requestFactory(requestFactory)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey())
+                .build();
+    }
+}

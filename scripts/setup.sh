@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ -f .env ]]; then
-  echo "✔ .env ya existe: no se modifica (tu clave de Groq se conserva)."
+  echo "✔ .env ya existe: no se modifica (tu clave se conserva)."
   echo "  Arranca la aplicación con:  docker compose up -d"
   exit 0
 fi
@@ -15,11 +15,11 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Clave de Groq (gratuita, sin tarjeta): https://console.groq.com/keys"
-read -rsp "Pega tu clave (gsk_...; no se muestra al escribir): " groq_key
+echo "Clave de Mistral (gratuita, sin tarjeta): https://console.mistral.ai/api-keys"
+read -rsp "Pega tu clave (no se muestra al escribir): " api_key
 echo
-if [[ ! "$groq_key" =~ ^gsk_[A-Za-z0-9]+$ ]]; then
-  echo "✘ La clave debe empezar por gsk_ y no contener espacios. No se ha creado .env." >&2
+if [[ ! "$api_key" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
+  echo "✘ La clave no parece válida (sin espacios, al menos 20 caracteres). No se ha creado .env." >&2
   exit 1
 fi
 
@@ -28,7 +28,7 @@ jwt_secret=$(head -c 48 /dev/urandom | base64 | tr -d '\n')
 
 umask 077 # .env solo legible por el usuario
 sed -e "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" \
-    -e "s|^GROQ_API_KEY=.*|GROQ_API_KEY=${groq_key}|" \
+    -e "s|^MISTRAL_API_KEY=.*|MISTRAL_API_KEY=${api_key}|" \
     .env.example > .env
 
 echo "✔ .env creado. Siguiente paso (la primera vez tarda unos minutos):"

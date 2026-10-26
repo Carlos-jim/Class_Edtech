@@ -3,45 +3,57 @@ package com.edtech.tutor.speech.infra;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.edtech.tutor.shared.groq.GroqProperties;
+import com.edtech.tutor.shared.ai.AiProvider;
+import com.edtech.tutor.shared.ai.AiProviders;
+import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 class SpeechConfigTests {
 
     @Test
-    void groqIsTheDefaultProvider() {
-        assertThat(SpeechConfig.create(null, groq("gsk_test"))).isInstanceOf(GroqWhisperAdapter.class);
-        assertThat(SpeechConfig.create("  ", groq("gsk_test"))).isInstanceOf(GroqWhisperAdapter.class);
+    void mistralIsTheDefaultProvider() {
+        assertThat(SpeechConfig.create(null, providers("mistral-key", "")))
+                .isInstanceOf(OpenAiCompatibleTranscriptionAdapter.class);
+        assertThat(SpeechConfig.create("  ", providers("mistral-key", "")))
+                .isInstanceOf(OpenAiCompatibleTranscriptionAdapter.class);
+    }
+
+    @Test
+    void groqCanBeSelectedByConfiguration() {
+        assertThat(SpeechConfig.create("groq", providers("", "gsk_test")))
+                .isInstanceOf(OpenAiCompatibleTranscriptionAdapter.class);
     }
 
     @Test
     void mockIsOnlyUsedWhenExplicitlySelected() {
-        assertThat(SpeechConfig.create("mock", groq(""))).isInstanceOf(MockTranscriptionAdapter.class);
+        assertThat(SpeechConfig.create("mock", providers("", ""))).isInstanceOf(MockTranscriptionAdapter.class);
     }
 
     @Test
-    void groqProviderUsesWhisperAdapter() {
-        assertThat(SpeechConfig.create("GROQ", groq("gsk_test"))).isInstanceOf(GroqWhisperAdapter.class);
-    }
-
-    @Test
-    void groqWithoutApiKeyFailsFast() {
-        assertThatThrownBy(() -> SpeechConfig.create("groq", groq("")))
+    void selectedProviderWithoutApiKeyFailsFast() {
+        assertThatThrownBy(() -> SpeechConfig.create("mistral", providers("", "gsk_test")))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("STT_PROVIDER=groq")
-                .hasMessageContaining("GROQ_API_KEY");
+                .hasMessageContaining("STT_PROVIDER=mistral")
+                .hasMessageContaining("MISTRAL_API_KEY");
     }
 
     @Test
     void unknownProviderIsRejected() {
-        assertThatThrownBy(() -> SpeechConfig.create("browser", groq("x")))
+        assertThatThrownBy(() -> SpeechConfig.create("browser", providers("x", "y")))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("mock, groq");
+                .hasMessageContaining("mock, mistral, groq");
     }
 
-    private static GroqProperties groq(String apiKey) {
-        return new GroqProperties(apiKey, "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile",
-                "whisper-large-v3-turbo", 0.2, 600, Duration.ofSeconds(3), Duration.ofSeconds(15));
+    private static AiProviders providers(String mistralKey, String groqKey) {
+        return new AiProviders(
+                new AiProvider("mistral", "Mistral", "MISTRAL_API_KEY", "https://console.mistral.ai/api-keys",
+                        settings(mistralKey)),
+                new AiProvider("groq", "Groq", "GROQ_API_KEY", "https://console.groq.com/keys", settings(groqKey)));
+    }
+
+    private static OpenAiCompatibleProperties settings(String apiKey) {
+        return new OpenAiCompatibleProperties(apiKey, "https://ai.test/v1", "chat-model", "transcription-model",
+                0.2, 600, Duration.ofSeconds(3), Duration.ofSeconds(15));
     }
 }

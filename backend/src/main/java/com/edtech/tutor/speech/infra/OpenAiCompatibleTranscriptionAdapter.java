@@ -1,6 +1,6 @@
 package com.edtech.tutor.speech.infra;
 
-import com.edtech.tutor.shared.groq.GroqProperties;
+import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.speech.domain.AudioClip;
 import com.edtech.tutor.speech.domain.TranscriptionPort;
 import com.edtech.tutor.speech.domain.TranscriptionUnavailableException;
@@ -17,20 +17,25 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
-/** Adaptador hacia Groq Audio Transcriptions (Whisper, compatible con OpenAI). */
-public class GroqWhisperAdapter implements TranscriptionPort {
+/**
+ * Adaptador hacia cualquier API de Audio Transcriptions compatible con OpenAI: Mistral (Voxtral), Groq (Whisper)...
+ * Solo envía los campos comunes a todos ({@code file}, {@code model}, {@code language}, {@code temperature}).
+ */
+public class OpenAiCompatibleTranscriptionAdapter implements TranscriptionPort {
 
-    private static final Logger log = LoggerFactory.getLogger(GroqWhisperAdapter.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiCompatibleTranscriptionAdapter.class);
 
     record TranscriptionResponse(String text) {
     }
 
     private final RestClient http;
-    private final GroqProperties properties;
+    private final OpenAiCompatibleProperties properties;
+    private final String provider;
 
-    public GroqWhisperAdapter(RestClient http, GroqProperties properties) {
+    public OpenAiCompatibleTranscriptionAdapter(RestClient http, OpenAiCompatibleProperties properties, String provider) {
         this.http = http;
         this.properties = properties;
+        this.provider = provider;
     }
 
     @Override
@@ -43,7 +48,6 @@ public class GroqWhisperAdapter implements TranscriptionPort {
         form.add("file", new HttpEntity<>(new NamedByteArrayResource(clip.data(), clip.filename()), fileHeaders));
         form.add("model", properties.transcriptionModel());
         form.add("language", "es");
-        form.add("response_format", "json");
         form.add("temperature", "0");
 
         try {
@@ -55,16 +59,18 @@ public class GroqWhisperAdapter implements TranscriptionPort {
                     .body(TranscriptionResponse.class);
             return response == null || response.text() == null ? "" : response.text();
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw TranscriptionUnavailableException.retryable("Groq Whisper: límite de peticiones (429)", ex);
+            throw TranscriptionUnavailableException.retryable(provider + " (voz): límite de peticiones (429)", ex);
         } catch (HttpServerErrorException ex) {
-            throw TranscriptionUnavailableException.retryable("Groq Whisper: error del servidor (" + ex.getStatusCode().value() + ")", ex);
+            throw TranscriptionUnavailableException.retryable(provider + " (voz): error del servidor (" + ex.getStatusCode().value() + ")", ex);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode().value() == 401) {
-                log.error("Groq rechazó la API key (401). Revisa GROQ_API_KEY.");
+                log.error("{} rechazó la API key (401). Revisa la clave en .env.", provider);
+            } else {
+                log.warn("{} (voz) HTTP {}: {}", provider, ex.getStatusCode().value(), ex.getResponseBodyAsString());
             }
-            throw TranscriptionUnavailableException.permanent("Groq Whisper: petición rechazada (" + ex.getStatusCode().value() + ")", ex);
+            throw TranscriptionUnavailableException.permanent(provider + " (voz): petición rechazada (" + ex.getStatusCode().value() + ")", ex);
         } catch (ResourceAccessException ex) {
-            throw TranscriptionUnavailableException.retryable("Groq Whisper: sin respuesta a tiempo o error de red", ex);
+            throw TranscriptionUnavailableException.retryable(provider + " (voz): sin respuesta a tiempo o error de red", ex);
         }
     }
 

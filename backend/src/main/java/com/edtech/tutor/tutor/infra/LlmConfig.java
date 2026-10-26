@@ -1,10 +1,8 @@
 package com.edtech.tutor.tutor.infra;
 
-import com.edtech.tutor.shared.groq.GroqClient;
-import com.edtech.tutor.shared.groq.GroqProperties;
+import com.edtech.tutor.shared.ai.AiProviders;
 import com.edtech.tutor.tutor.domain.LlmPort;
-import com.edtech.tutor.tutor.infra.groq.GroqLlmAdapter;
-import java.util.Locale;
+import com.edtech.tutor.tutor.infra.openai.OpenAiCompatibleLlmAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +12,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Elige la implementación de {@link LlmPort} según {@code tutor.llm.provider} (Strategy + Factory).
- * Los proveedores reales se envuelven en {@link ResilientLlmPort}; el mock no, porque es local y determinista.
+ * Los proveedores reales (Mistral, Groq) comparten el adaptador compatible con OpenAI y se envuelven en
+ * {@link ResilientLlmPort}; el mock no, porque es local y determinista.
  */
 @Configuration
 class LlmConfig {
@@ -22,26 +21,19 @@ class LlmConfig {
     private static final Logger log = LoggerFactory.getLogger(LlmConfig.class);
 
     @Bean
-    LlmPort llmPort(@Value("${tutor.llm.provider:mock}") String provider, GroqProperties groq, ObjectMapper json) {
-        return create(provider, groq, json);
+    LlmPort llmPort(@Value("${tutor.llm.provider:}") String provider, AiProviders providers, ObjectMapper json) {
+        return create(provider, providers, json);
     }
 
-    static LlmPort create(String provider, GroqProperties groq, ObjectMapper json) {
-        var selected = provider == null || provider.isBlank() ? "groq" : provider.strip().toLowerCase(Locale.ROOT);
-        return switch (selected) {
-            case "mock" -> {
-                log.warn("Tutor IA: proveedor MOCK (respuestas simuladas, solo para tests automáticos)");
-                yield new MockLlmAdapter();
-            }
-            case "groq" -> {
-                if (!groq.hasApiKey()) {
-                    throw new IllegalStateException("LLM_PROVIDER=groq " + GroqClient.MISSING_KEY_MESSAGE);
-                }
-                log.info("Tutor IA: proveedor GROQ, modelo {}", groq.chatModel());
-                yield ResilientLlmPort.withDefaults(new GroqLlmAdapter(GroqClient.restClient(groq), groq, json), "groq");
-            }
-            default -> throw new IllegalStateException(
-                    "tutor.llm.provider no soportado: '" + provider + "'. Valores válidos: mock, groq");
-        };
+    static LlmPort create(String provider, AiProviders providers, ObjectMapper json) {
+        var selected = AiProviders.normalize(provider);
+        if (AiProviders.MOCK.equals(selected)) {
+            log.warn("Tutor IA: proveedor MOCK (respuestas simuladas, solo para tests automáticos)");
+            return new MockLlmAdapter();
+        }
+        var ai = providers.require(selected, "LLM_PROVIDER");
+        log.info("Tutor IA: proveedor {}, modelo {}", ai.label(), ai.settings().chatModel());
+        var adapter = new OpenAiCompatibleLlmAdapter(ai.restClient(), ai.settings(), json, ai.label());
+        return ResilientLlmPort.withDefaults(adapter, ai.id());
     }
 }

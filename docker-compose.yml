@@ -39,10 +39,15 @@ services:
       DB_USER: ${DB_USER:-tutor}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (openssl rand -base64 48)}
-      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
-      STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-groq}}
-      GROQ_API_KEY: ${GROQ_API_KEY:?Define GROQ_API_KEY en .env (clave gratuita en https://console.groq.com/keys)}
+      # Proveedor de IA (mistral | groq). Si falta la clave del elegido, el backend no arranca y explica cuál falta.
+      LLM_PROVIDER: ${LLM_PROVIDER:-mistral}
+      STT_PROVIDER: ${STT_PROVIDER:-${LLM_PROVIDER:-mistral}}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-small-latest}
+      MISTRAL_TRANSCRIPTION_MODEL: ${MISTRAL_TRANSCRIPTION_MODEL:-voxtral-mini-latest}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      GROQ_TRANSCRIPTION_MODEL: ${GROQ_TRANSCRIPTION_MODEL:-whisper-large-v3-turbo}
       RATE_LIMIT_LOGIN_PER_MINUTE: ${RATE_LIMIT_LOGIN_PER_MINUTE:-20}
       RATE_LIMIT_QUESTIONS_PER_MINUTE: ${RATE_LIMIT_QUESTIONS_PER_MINUTE:-15}
       RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE: ${RATE_LIMIT_TRANSCRIPTIONS_PER_MINUTE:-15}

@@ -1,11 +1,11 @@
-package com.edtech.tutor.tutor.infra.groq;
+package com.edtech.tutor.tutor.infra.openai;
 
+import com.edtech.tutor.shared.ai.OpenAiCompatibleProperties;
 import com.edtech.tutor.tutor.domain.LlmPort;
 import com.edtech.tutor.tutor.domain.LlmUnavailableException;
 import com.edtech.tutor.tutor.domain.MessageRole;
 import com.edtech.tutor.tutor.domain.TutorAnswer;
 import com.edtech.tutor.tutor.domain.TutorPrompt;
-import com.edtech.tutor.shared.groq.GroqProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,15 +20,15 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Adaptador hacia Groq Chat Completions (compatible con OpenAI) en modo JSON.
+ * Adaptador hacia cualquier API de Chat Completions compatible con OpenAI (Mistral, Groq...) en modo JSON.
  * Traduce el {@link TutorPrompt} del dominio al formato del proveedor y clasifica los errores en reintentables
  * (timeout, 429, 5xx, salida mal formada) o permanentes (credenciales, petición inválida).
  */
-public class GroqLlmAdapter implements LlmPort {
+public class OpenAiCompatibleLlmAdapter implements LlmPort {
 
-    private static final Logger log = LoggerFactory.getLogger(GroqLlmAdapter.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiCompatibleLlmAdapter.class);
 
-    // --- Contrato HTTP de Groq / OpenAI ---------------------------------------------------------
+    // --- Contrato HTTP OpenAI (chat completions) ---------------------------------------------------------
 
     record ChatMessage(String role, String content) {
     }
@@ -57,13 +57,16 @@ public class GroqLlmAdapter implements LlmPort {
     // --------------------------------------------------------------------------------------------
 
     private final RestClient http;
-    private final GroqProperties properties;
+    private final OpenAiCompatibleProperties properties;
     private final ObjectMapper json;
+    private final String provider;
 
-    public GroqLlmAdapter(RestClient http, GroqProperties properties, ObjectMapper json) {
+    public OpenAiCompatibleLlmAdapter(RestClient http, OpenAiCompatibleProperties properties, ObjectMapper json,
+                                      String provider) {
         this.http = http;
         this.properties = properties;
         this.json = json;
+        this.provider = provider;
     }
 
     @Override
@@ -80,23 +83,23 @@ public class GroqLlmAdapter implements LlmPort {
                     .retrieve()
                     .body(ChatResponse.class);
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw LlmUnavailableException.retryable("Groq: límite de peticiones alcanzado (429)", ex);
+            throw LlmUnavailableException.retryable(provider + ": límite de peticiones alcanzado (429)", ex);
         } catch (HttpServerErrorException ex) {
-            throw LlmUnavailableException.retryable("Groq: error del servidor (" + ex.getStatusCode().value() + ")", ex);
+            throw LlmUnavailableException.retryable(provider + ": error del servidor (" + ex.getStatusCode().value() + ")", ex);
         } catch (HttpClientErrorException ex) {
             var status = ex.getStatusCode().value();
             if (status == 401) {
-                log.error("Groq rechazó la API key (401). Revisa GROQ_API_KEY.");
+                log.error("{} rechazó la API key (401). Revisa la clave en .env.", provider);
             } else {
-                log.warn("Groq HTTP {}: {}", status, ex.getResponseBodyAsString());
+                log.warn("{} HTTP {}: {}", provider, status, ex.getResponseBodyAsString());
             }
-            // 400 puntual (contexto/modelo) a veces es transitorio en el free tier → un reintento ayuda.
+            // 400 puntual (contexto/modelo) a veces es transitorio en los planes gratuitos → un reintento ayuda.
             if (status == 400) {
-                throw LlmUnavailableException.retryable("Groq: petición rechazada (400)", ex);
+                throw LlmUnavailableException.retryable(provider + ": petición rechazada (400)", ex);
             }
-            throw LlmUnavailableException.permanent("Groq: petición rechazada (" + status + ")", ex);
+            throw LlmUnavailableException.permanent(provider + ": petición rechazada (" + status + ")", ex);
         } catch (ResourceAccessException ex) {
-            throw LlmUnavailableException.retryable("Groq: sin respuesta a tiempo o error de red", ex);
+            throw LlmUnavailableException.retryable(provider + ": sin respuesta a tiempo o error de red", ex);
         }
 
         return parse(response);
@@ -115,18 +118,18 @@ public class GroqLlmAdapter implements LlmPort {
     private TutorAnswer parse(ChatResponse response) {
         if (response == null || response.choices() == null || response.choices().isEmpty()
                 || response.choices().getFirst().message() == null) {
-            throw LlmUnavailableException.retryable("Groq: respuesta vacía", null);
+            throw LlmUnavailableException.retryable(provider + ": respuesta vacía", null);
         }
         var content = response.choices().getFirst().message().content();
         try {
             var structured = json.readValue(content, StructuredAnswer.class);
             if (structured.answer() == null || structured.answer().isBlank() || structured.grounded() == null) {
-                throw LlmUnavailableException.retryable("Groq: JSON sin 'answer' o 'grounded'", null);
+                throw LlmUnavailableException.retryable(provider + ": JSON sin 'answer' o 'grounded'", null);
             }
             // La verificación literal de la cita la hace CitationVerifier en TutorService.
             return new TutorAnswer(structured.answer(), structured.grounded(), structured.citation());
         } catch (JacksonException | IllegalArgumentException ex) {
-            throw LlmUnavailableException.retryable("Groq: la salida no es el JSON esperado", ex);
+            throw LlmUnavailableException.retryable(provider + ": la salida no es el JSON esperado", ex);
         }
     }
 }

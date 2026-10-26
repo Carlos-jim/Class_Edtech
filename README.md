@@ -6,7 +6,7 @@ Un alumno autorizado abre una lección y pregunta a un tutor de IA **por texto o
 contenido de la lección (o avisa de que no tiene información suficiente), la respuesta **se puede escuchar** y la
 conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la lección ni los mensajes de nadie.
 
-**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Groq (gpt-oss-120b + Whisper) · Docker
+**Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Mistral (chat + Voxtral) o Groq · Docker
 
 | Documento | Contenido |
 |---|---|
@@ -56,11 +56,12 @@ Verifica la instalación con `docker run --rm hello-world`.
 
 ## 1. Puesta en marcha
 
-Necesitas una **clave de Groq** (gratuita, sin tarjeta): https://console.groq.com/keys
+Necesitas una **clave de Mistral** (gratuita, sin tarjeta): https://console.mistral.ai/api-keys
+(alternativa: Groq; ver la [sección 3](#3-proveedor-de-ia-mistral-o-groq)).
 
 ### Primera vez (solo una vez)
 
-**1. Crear la configuración (`.env`).** El script pide la clave de Groq, genera el secreto JWT y crea `.env`.
+**1. Crear la configuración (`.env`).** El script pide la clave de Mistral, genera el secreto JWT y crea `.env`.
 Si `.env` ya existe **no lo toca**, así que ejecutarlo de nuevo es seguro.
 
 ```bash
@@ -74,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1  # Windows (PowerShel
 <details>
 <summary>Alternativa manual</summary>
 
-Copia `.env.example` a `.env` **una sola vez** y edita en `.env`: `GROQ_API_KEY` (tu clave) y `JWT_SECRET` (una
+Copia `.env.example` a `.env` **una sola vez** y edita en `.env`: `MISTRAL_API_KEY` (tu clave) y `JWT_SECRET` (una
 cadena aleatoria de al menos 32 caracteres, p. ej. la salida de `openssl rand -base64 48`).
 </details>
 
@@ -102,19 +103,16 @@ sobrescribiría tu clave). Solo tienes que arrancar:
 
 Abre **http://localhost:8080**. En la pantalla de login hay accesos directos a las dos cuentas de prueba:
 
-> Funciona igual en Linux, macOS y Windows (red bridge de Docker). Si con Groq ves **403**
-> (*Access denied. Please check your network settings*): en algunas redes Groq rechaza la salida desde el bridge de
-> Docker y solo acepta la del propio host. En Linux, añade `COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml`
-> a `.env` (el backend pasa a la red del host, puerto `BACKEND_PORT`, por defecto 8081). La JVM ya prefiere IPv6
-> (`-Djava.net.preferIPv6Addresses=true`).
+> Funciona igual en Linux, macOS y Windows (red bridge de Docker).
 
 | Usuario | Contraseña | Acceso |
 |---|---|---|
 | `ana.garcia@demo.edtech` | `Demo1234!` | Matriculada en *Fundamentos de APIs REST* (2 lecciones) |
 | `bruno.lopez@demo.edtech` | `Demo1234!` | Sin acceso al curso |
 
-El tutor y la transcripción de voz usan **Groq**. Sin `GROQ_API_KEY` en `.env`, `docker compose up` se detiene y
-explica dónde conseguirla. Más detalles en la [sección 3](#3-ia-con-groq).
+El tutor y la transcripción de voz usan **Mistral** por defecto. Si falta la clave del proveedor elegido, el backend
+no arranca y explica cuál falta y dónde conseguirla (`docker compose logs backend`). Más detalles en la
+[sección 3](#3-proveedor-de-ia-mistral-o-groq).
 
 > El puerto se cambia con `APP_PORT` en `.env`. La base de datos se publica solo en `127.0.0.1:${DB_PORT}`.
 > Si `docker compose up` falla con *port is already allocated* (otro contenedor o servicio usa el 8080 o el 5433),
@@ -135,16 +133,32 @@ La lectura en voz alta usa las voces del navegador (`speechSynthesis`). Si el na
 hace falta `speech-dispatcher`, y los navegadores Flatpak (p. ej. Opera) no lo ven— el panel lo avisa con *Reintentar*
 en lugar de quedarse en silencio. Chrome, Edge o Firefox nativos funcionan.
 
-## 3. IA con Groq
+## 3. Proveedor de IA (Mistral o Groq)
 
-1. Crea una clave en https://console.groq.com/keys (plan gratuito).
-2. Ponla en `.env`: `GROQ_API_KEY=gsk_...` (la misma clave sirve para el tutor y para la voz). El script de
-   [configuración inicial](#primera-vez-solo-una-vez) ya lo hace por ti.
-3. `docker compose up -d` (si cambias la clave con la app en marcha, este comando recrea el backend).
+El tutor (chat) y la voz (transcripción) usan un proveedor con **API compatible con OpenAI**. Los dos tienen plan
+gratuito y comparten los mismos adaptadores, así que **cambiar de proveedor es solo editar `.env`**:
 
-Modelos: `openai/gpt-oss-120b` para el tutor (`GROQ_MODEL`; reemplazo actual del Llama 3.3 retirado en el plan
-gratuito de Groq) y `whisper-large-v3-turbo` para la voz. La clave solo vive en el backend; si falta, la aplicación
-no arranca y explica cómo resolverlo.
+| `LLM_PROVIDER` | Clave en `.env` | Dónde conseguirla | Modelos (chat · voz) |
+|---|---|---|---|
+| `mistral` (por defecto) | `MISTRAL_API_KEY` | https://console.mistral.ai/api-keys | `mistral-small-latest` · `voxtral-mini-latest` |
+| `groq` | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` · `whisper-large-v3-turbo` |
+
+1. Crea la clave y ponla en `.env` (el [script de configuración inicial](#primera-vez-solo-una-vez) lo hace para
+   Mistral).
+2. Para usar Groq: `LLM_PROVIDER=groq` y `GROQ_API_KEY=gsk_...`. La voz usa el mismo proveedor salvo que indiques
+   `STT_PROVIDER` (p. ej. chat con Groq y voz con Mistral).
+3. `docker compose up -d` (recrea el backend con la nueva configuración).
+
+Los modelos se cambian con `MISTRAL_MODEL`, `MISTRAL_TRANSCRIPTION_MODEL`, `GROQ_MODEL` y `GROQ_TRANSCRIPTION_MODEL`.
+Las claves solo viven en el backend.
+
+> **Groq bloquea algunas redes o regiones**: responde **403** *Access denied. Please check your network settings*
+> (en los logs del backend: `petición rechazada (403)`). En ese caso usa Mistral. En Linux, si el bloqueo es solo
+> de la red bridge de Docker, también puedes probar
+> `COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml` en `.env` (backend en la red del host, puerto
+> `BACKEND_PORT`, por defecto 8081).
+>
+> En el plan gratuito de Mistral, las peticiones pueden usarse para entrenar sus modelos: no envíes datos personales.
 
 > Existe un proveedor simulado (`LLM_PROVIDER=mock`) **solo para los tests automáticos y la CI**: respuestas
 > deterministas, sin red ni cuota. No está pensado para usar la aplicación.
@@ -174,14 +188,14 @@ cd frontend && npm run test:ci     # 74 tests unitarios (Vitest)
 LLM_PROVIDER=mock STT_PROVIDER=mock docker compose up -d --build
 cd frontend && npx playwright install chromium && E2E_BASE_URL=http://localhost:8080 npm run e2e   # suite completa
 
-# Solo el recorrido del enunciado (01–06), también contra Groq (docker compose up -d --build, sin variables):
+# Solo el recorrido del enunciado (01–06), también con el proveedor real (docker compose up -d --build, sin variables):
 E2E_BASE_URL=http://localhost:8080 npm run e2e:poc
 ```
 
 > Los E2E hacen muchas peticiones seguidas: en `.env` sube los límites (`RATE_LIMIT_*_PER_MINUTE=1000`), como hace
-> la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests). Con Groq, `e2e:poc` usa
-> aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock. Al terminar, vuelve a Groq con
-> `docker compose up -d`.
+> la CI. Necesitan Docker en la máquina (reinician las conversaciones entre tests). Con un proveedor real, `e2e:poc`
+> usa aserciones semánticas (insignias grounded) en lugar de las frases fijas del mock. Al terminar, vuelve al
+> proveedor real con `docker compose up -d`.
 
 | Nivel | Qué cubre |
 |---|---|
@@ -201,8 +215,8 @@ y del frontend y, si pasan, se levanta el stack Docker completo y se ejecutan lo
 ┌────────────────────────┐   /      ┌──────────┐   /api   ┌──────────────────────────────┐
 │ Login · Mis cursos     │◀────────▶│ SPA + CSP│◀────────▶│ auth      JWT, rate limit    │
 │ Lección + Tutor        │          └──────────┘          │ catalog   AccessPolicy       │
-│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Groq LLM / mock
-│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Groq Whisper / mock
+│  · TutorStore (estado) │                                │ tutor     LlmPort ───────────┼──▶ Mistral / Groq / mock
+│  · MediaRecorder (voz) │                                │ speech    TranscriptionPort ─┼──▶ Voxtral / Whisper / mock
 │  · speechSynthesis TTS │                                │ Flyway + JPA ────────────────┼──▶ PostgreSQL
 └────────────────────────┘                                └──────────────────────────────┘
 ```
@@ -233,7 +247,7 @@ responde 404, igual que uno inexistente.
   las conversaciones se buscan por (alumno, lección), nunca por un id del cliente.
 - **XSS**: Markdown con `marked` + DOMPurify + saneado de Angular; mensajes siempre como texto; CSP estricta en nginx.
 - **Inyección SQL**: JPA/consultas parametrizadas, sin SQL concatenado.
-- **Credenciales**: BCrypt; secretos solo por variables de entorno; `.env` fuera de git; clave de Groq solo en el
+- **Credenciales**: BCrypt; secretos solo por variables de entorno; `.env` fuera de git; clave del proveedor de IA solo en el
   backend y enmascarada en logs.
 - **Abuso**: límite de peticiones (login por IP; IA y voz por alumno), validación de tamaño y formato real del audio.
 

@@ -11,15 +11,15 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 - Microservicios descartados: añadirían red, despliegue y consistencia distribuida sin aportar nada a un recorrido
   acotado, y harían la solución más difícil de explicar.
 - La arquitectura hexagonal se aplica **solo** a la IA (`LlmPort`) y a la voz (`TranscriptionPort`), que es donde
-  realmente cambia la implementación (mock, Groq u otro proveedor). En el resto sería ceremonia.
+  realmente cambia la implementación (mock, Mistral, Groq...). En el resto sería ceremonia.
 
 ### Patrones de diseño
 
 | Patrón | Dónde | Para qué |
 |---|---|---|
 | Ports & Adapters | `LlmPort`, `TranscriptionPort` | El dominio no depende del proveedor; el mock permite tests y CI deterministas, sin claves |
-| Strategy + Factory | `LlmConfig`, `SpeechConfig` | Elegir proveedor por configuración (`mock` / `groq`) y fallar al arrancar si falta la clave |
-| Adapter | `GroqLlmAdapter`, `GroqWhisperAdapter`; `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
+| Strategy + Factory | `LlmConfig`, `SpeechConfig`, `AiProviders` | Elegir proveedor por configuración (`mistral` / `groq` / `mock`) y fallar al arrancar si falta la clave |
+| Adapter | `OpenAiCompatibleLlmAdapter`, `OpenAiCompatibleTranscriptionAdapter` (Mistral y Groq); `AudioRecorder`, `SpeechPlayer` (frontend) | Aislar APIs externas y del navegador, traducir sus errores a errores propios |
 | Decorator | `ResilientLlmPort` | Añadir retry y circuit breaker a cualquier `LlmPort` sin modificarlo |
 | Facade / Application Service | `TutorService` | Un único punto que orquesta acceso → contexto → IA → persistencia |
 | Builder | `PromptBuilder` | Construir el prompt con la lección delimitada y defensas frente a inyección |
@@ -37,7 +37,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 | Angular 22 (standalone, signals, sin zone.js) | Signals encajan con la máquina de estados del tutor; requisito del participante |
 | Tailwind 4 | Sistema de diseño propio con tokens (ver `DESIGN.md`) sin una librería de componentes pesada |
 | PostgreSQL 17 + Flyway | Migraciones versionadas y datos de demo reproducibles; restricciones de integridad en la BD |
-| Groq (`openai/gpt-oss-120b` + Whisper) | Plan gratuito, API compatible con OpenAI, muy baja latencia (importante en voz) |
+| Mistral (`mistral-small` + Voxtral) por defecto; Groq (`gpt-oss-120b` + Whisper) como alternativa | Planes gratuitos, API compatible con OpenAI (mismos adaptadores), chat y voz en un mismo proveedor |
 
 ## 3. Tutor de IA
 
@@ -45,7 +45,7 @@ Síntesis de las decisiones relevantes de la POC, las alternativas descartadas y
 (embeddings + base vectorial) añadiría coste y puntos de fallo sin mejorar la calidad aquí. Si el contenido creciera,
 el siguiente paso sería trocear la lección y recuperar fragmentos (p. ej. pgvector) detrás del mismo `PromptBuilder`.
 
-**Salida estructurada `{answer, grounded, citation}`** (modo JSON de Groq). El prompt exige responder solo con la
+**Salida estructurada `{answer, grounded, citation}`** (modo JSON, `response_format: json_object`). El prompt exige responder solo con la
 lección, marcar `grounded=false` cuando no basta y, si afirma estar grounded, devolver una **cita literal** de la
 lección. `CitationVerifier` comprueba que la cita aparece en el texto (normalizando Markdown/acentos, con un
 respaldo por cobertura de palabras en orden). Si falla, se degrada a `grounded=false` y no se muestra cita. La UI
@@ -55,12 +55,21 @@ enseña insignia + bloque «De la lección: …»; así el indicador no depende 
 lección se declaran como datos; se neutralizan las etiquetas delimitadoras en cualquier texto para que nadie pueda
 "cerrar" el bloque. Un LLM puede seguir equivocándose: ver límites.
 
-**Groq por defecto; mock solo para tests.** La aplicación usa Groq y no arranca sin `GROQ_API_KEY`. El mock
+**Proveedor intercambiable por configuración (Mistral por defecto, Groq como alternativa).** Durante el desarrollo
+Groq empezó a responder `403 Access denied` desde la red del desarrollador (bloqueo de red/región, no de la clave).
+Como ambos exponen una API compatible con OpenAI, los adaptadores se generalizaron (`OpenAiCompatibleLlmAdapter`,
+`OpenAiCompatibleTranscriptionAdapter`) y un registro (`AiProviders`) asocia cada proveedor con su URL, modelos y
+variable de clave. Cambiar de proveedor —o usar uno para el chat y otro para la voz— es editar `.env`; añadir otro
+compatible es una entrada más en el registro. La aplicación no arranca si falta la clave del proveedor elegido, y el
+mensaje dice cuál y dónde conseguirla. Solo se envían los campos comunes a todos (p. ej. la transcripción no envía
+`response_format`, que Mistral no documenta).
+
+**Mock solo para tests.** El mock
 determinista (`LLM_PROVIDER=mock`) busca la sección de la lección con más palabras clave de la pregunta y, si no hay
 coincidencias, responde `grounded=false`; existe para que los tests y la CI sean reproducibles, sin red ni cuota, y
 puedan simular una caída (`#simular-fallo`).
 
-**Groq con `RestClient` en lugar de Spring AI.** Ya existe el puerto propio, así que la abstracción de Spring AI sobraba;
+**`RestClient` en lugar de Spring AI.** Ya existe el puerto propio, así que la abstracción de Spring AI sobraba;
 además su autoconfiguración exige clave al arrancar (incompatible con el modo mock) y se quería control explícito de
 timeouts, modo JSON y clasificación de errores.
 
@@ -94,7 +103,7 @@ por el servicio o la red, se reintenta con **la misma grabación** (se guarda en
 | IDOR / acceso indebido | Identidad solo desde el JWT (`@CurrentStudentId`); matrícula comprobada en la propia consulta (`findAccessible`); conversación por (alumno, lección), sin ids en la API; sin acceso → **404 idéntico a inexistente** (no se puede enumerar). Tests con una segunda alumna matriculada que comparte lección. |
 | XSS | Markdown: `marked` (HTML crudo escapado) → DOMPurify → saneado de Angular, sin `bypassSecurityTrust*`. Chat siempre interpolado. CSP `script-src 'self'`. Tests unitarios y E2E con cargas maliciosas. |
 | Inyección SQL | JPA / JPQL parametrizado; la única consulta nativa usa parámetros. Ids tipados como UUID (un id manipulado da 400). |
-| Credenciales | BCrypt; JWT HS256 con secreto ≥ 32 bytes obligatorio (si no, no arranca); `.env` fuera de git; clave de Groq solo en el backend y enmascarada en logs; CI con secretos efímeros. |
+| Credenciales | BCrypt; JWT HS256 con secreto ≥ 32 bytes obligatorio (si no, no arranca); `.env` fuera de git; clave del proveedor de IA solo en el backend y enmascarada en logs; CI con secretos efímeros. |
 | Fuerza bruta / abuso de cuota | Rate limit: login por IP, preguntas y transcripciones por alumno (429 + `Retry-After`). Mismo mensaje para correo inexistente y contraseña errónea. |
 | CSRF | Desactivado de forma consciente: no hay cookies de sesión; el token va en `Authorization`. |
 | CORS | Solo orígenes configurados, nunca `*`. En Docker la SPA y la API comparten origen a través de nginx. |
@@ -130,8 +139,10 @@ nuevo*. Responsive (tres columnas ≥ 1280 px, tutor a pantalla completa en móv
   `sessionStorage`, accesible a JavaScript: la defensa es evitar XSS (CSP + saneado). En producción: cookie
   `HttpOnly` + `SameSite` con refresh token rotatorio.
 - **Rate limiting en memoria**: válido para una instancia; con varias réplicas haría falta Redis o el API gateway.
-- **Proveedor gratuito**: Groq free tier tiene cuotas por minuto/día; el circuit breaker y los mensajes de error lo
-  cubren, pero no hay cola ni degradación a otro proveedor.
+- **Proveedor gratuito**: los planes gratuitos tienen cuotas por minuto/día y condiciones cambiantes (Groq bloquea
+  algunas redes; en el gratuito de Mistral las peticiones pueden usarse para entrenar). El circuit breaker y los
+  mensajes de error lo cubren y se cambia de proveedor desde `.env`, pero no hay conmutación automática a otro
+  proveedor.
 - **Voz**: la calidad del TTS depende de las voces instaladas en el sistema del alumno. Si no hay ninguna (Linux sin
   `speech-dispatcher`, navegadores Flatpak sin acceso a él) la Web Speech API no da error: simplemente no suena. Se
   detecta con un temporizador (si no empieza a sonar en 3 s) y se avisa al alumno; no hay TTS en servidor de respaldo. En modo mock la transcripción
