@@ -22,7 +22,16 @@ Requisitos: Docker con Docker Compose.
 
 ```bash
 cp .env.example .env
-sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48)|" .env   # o edítalo a mano (≥ 32 caracteres)
+sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48)|" .env   # o edítalo a mano (≥ 32 caracteres)
+docker compose up --build
+```
+
+En **Windows** (Docker Desktop, PowerShell; desde la raíz del repo):
+
+```powershell
+$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+$envText = [IO.File]::ReadAllText("$PWD\.env.example") -replace '(?m)^JWT_SECRET=[^\r\n]*', ("JWT_SECRET=" + [Convert]::ToBase64String($b))
+[IO.File]::WriteAllText("$PWD\.env", $envText)
 docker compose up --build
 ```
 
@@ -43,6 +52,8 @@ Por defecto la IA y la transcripción funcionan en **modo simulado** (`LLM_PROVI
 y el recorrido completo es demostrable. Para usar el modelo real, ver la [sección 3](#3-ia-real-con-groq-gratuito).
 
 > El puerto se cambia con `APP_PORT` en `.env`. La base de datos se publica solo en `127.0.0.1:${DB_PORT}`.
+> Si `docker compose up` falla con *port is already allocated* (otro contenedor o servicio usa el 8080 o el 5433),
+> cambia `APP_PORT` o `DB_PORT` en `.env` por uno libre y ejecuta `docker compose down && docker compose up --build`.
 
 ## 2. Cómo comprobar cada requisito
 
