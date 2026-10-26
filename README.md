@@ -8,6 +8,19 @@ conversación **se recupera** al volver. Una cuenta sin acceso no puede ver la l
 
 **Stack:** Angular 22 · Tailwind 4 · Spring Boot 4 (Java 25) · PostgreSQL 17 · Google Gemini (chat + voz) · Groq / Mistral opcionales · Docker
 
+<a id="tiempos-de-respuesta"></a>
+
+> [!IMPORTANT]
+> **Las esperas se deben al plan gratuito de Gemini, no a la aplicación.** El tutor y la transcripción de voz usan el
+> plan gratuito de Google Gemini, elegido porque no pide tarjeta. Ese plan no garantiza velocidad: Google limita las
+> peticiones por minuto y, en horas de mucha demanda, responde más despacio o devuelve 503.
+>
+> - Lo habitual: **3–10 s** por respuesta o transcripción.
+> - En picos de demanda: **15–20 s**, o un aviso con *Reintentar*.
+>
+> La aplicación lo mitiga pidiendo la respuesta a varios modelos de Gemini en relevo y avisando cuando algo tarda.
+> Con un plan de pago, o con un proveedor más rápido como Cerebras (pide tarjeta), las esperas bajarían.
+
 | Documento | Contenido |
 |---|---|
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisiones de arquitectura, seguridad e IA; límites y aspectos no desarrollados |
@@ -168,11 +181,7 @@ Los modelos se cambian con `GEMINI_MODEL`, `GEMINI_TRANSCRIPTION_MODEL`, `CEREBR
 backend. El navegador convierte cada grabación a **WAV 16 kHz mono** antes de subirla (≈ 1,9 MB por minuto): es el
 formato que aceptan todos los proveedores (Gemini rechaza webm/ogg).
 
-> **Tiempos de respuesta: es normal que a veces tarde unos segundos de más.** El plan gratuito de Gemini no garantiza
-> velocidad: Google limita las peticiones por minuto y, en horas de mucha demanda, sus modelos gratuitos responden
-> más despacio o devuelven 503. Lo habitual es una respuesta en 3–10 s, pero en picos puede llegar a 15–20 s (o fallar
-> y ofrecer *Reintentar*). No es un fallo de la aplicación ni de tu equipo: es la limitación del plan gratuito, que se
-> eligió porque no pide tarjeta. Con un plan de pago, o un proveedor más rápido como Cerebras (pide tarjeta), bajaría.
+> **Tiempos de respuesta:** ver el [aviso del inicio](#tiempos-de-respuesta) sobre el plan gratuito de Gemini.
 
 > En el plan gratuito de Gemini, Google puede usar las peticiones para mejorar sus productos: no envíes datos
 > personales. Si ves 503 *high demand*, es un pico temporal de Google: el backend reintenta y la UI ofrece *Reintentar*.
